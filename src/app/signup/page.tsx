@@ -17,9 +17,14 @@ export default function SignupPage() {
     event.preventDefault();
     setStatus("loading");
     setErrorMessage(null);
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${siteUrl}/login`,
+      },
     });
     if (error) {
       setStatus("error");
