@@ -1,5 +1,5 @@
 import "server-only";
-import { Pool, PoolClient } from "pg";
+import { Pool, PoolClient, type QueryResultRow } from "pg";
 
 let pool: Pool | null = null;
 
@@ -13,7 +13,10 @@ function getPool(): Pool {
   return pool;
 }
 
-export async function dbQuery<T>(text: string, params?: unknown[]): Promise<T[]> {
+export async function dbQuery<T extends QueryResultRow>(
+  text: string,
+  params?: unknown[],
+): Promise<T[]> {
   const result = await getPool().query<T>(text, params);
   return result.rows;
 }
