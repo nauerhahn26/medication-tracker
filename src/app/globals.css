@@ -1,0 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Sora:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  --background: #f6f2ea;
+  --foreground: #151312;
+  --card: #fbf8f3;
+  --ink: #1b1916;
+  --muted: #5c574f;
+  --accent: #0f6b5f;
+  --accent-2: #d97757;
+  --line: #eadfcd;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Sora", system-ui, sans-serif;
+  --font-display: "Fraunces", serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Sora", system-ui, sans-serif;
+}
