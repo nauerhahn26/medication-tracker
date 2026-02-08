@@ -9,6 +9,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [resendStatus, setResendStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -22,6 +25,25 @@ export default function LoginPage() {
       return;
     }
     window.location.href = "/";
+  }
+
+  async function handleResend() {
+    if (!email) return;
+    setResendStatus("sending");
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${siteUrl}/login`,
+      },
+    });
+    if (error) {
+      setResendStatus("error");
+      return;
+    }
+    setResendStatus("sent");
   }
 
   return (
@@ -62,6 +84,27 @@ export default function LoginPage() {
             </p>
           )}
         </form>
+        <div className="rounded-3xl border border-[var(--line)] bg-white/80 p-4 text-xs text-[var(--muted)]">
+          <div className="font-semibold text-[var(--ink)]">
+            Didn&apos;t get the confirmation email?
+          </div>
+          <p className="mt-1">
+            Enter your email above, then resend the confirmation link.
+          </p>
+          <button
+            onClick={handleResend}
+            className="mt-3 rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)]"
+            type="button"
+          >
+            Resend confirmation
+          </button>
+          {resendStatus === "sent" && (
+            <p className="mt-2 text-[var(--accent)]">Confirmation email sent.</p>
+          )}
+          {resendStatus === "error" && (
+            <p className="mt-2 text-red-600">Could not resend confirmation.</p>
+          )}
+        </div>
         <p className="text-sm text-[var(--muted)]">
           New here?{" "}
           <Link href="/signup" className="font-semibold text-[var(--accent)]">
