@@ -11,16 +11,19 @@ export default function SignupPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle",
   );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setStatus("loading");
+    setErrorMessage(null);
     const { error } = await supabase.auth.signUp({
       email,
       password,
     });
     if (error) {
       setStatus("error");
+      setErrorMessage(error.message);
       return;
     }
     setStatus("done");
@@ -66,6 +69,7 @@ export default function SignupPage() {
           {status === "error" && (
             <p className="mt-3 text-xs text-red-600">
               Could not create account.
+              {errorMessage ? ` ${errorMessage}` : ""}
             </p>
           )}
         </form>
