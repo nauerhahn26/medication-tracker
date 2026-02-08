@@ -27,6 +27,7 @@ function todayIso() {
 export default function ActiveTodayPanel() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +42,12 @@ export default function ActiveTodayPanel() {
           setStatus("ready");
         }
       } catch {
-        if (active) setStatus("error");
+        if (active) {
+          setErrorMessage(
+            "No meds yet. Once you add or import, they will appear here.",
+          );
+          setStatus("error");
+        }
       }
     }
     load();
@@ -77,10 +83,18 @@ export default function ActiveTodayPanel() {
         <p className="mt-6 text-sm text-[var(--muted)]">Loading...</p>
       )}
       {status === "error" && (
-        <p className="mt-6 text-sm text-red-600">Failed to load meds.</p>
+        <p className="mt-6 text-sm text-[var(--muted)]">
+          {errorMessage ?? "No meds yet."}
+        </p>
       )}
 
-      {status === "ready" && data && (
+      {status === "ready" && data && data.meds.length === 0 && (
+        <p className="mt-6 text-sm text-[var(--muted)]">
+          No active meds for today. Add a med or import a CSV to get started.
+        </p>
+      )}
+
+      {status === "ready" && data && data.meds.length > 0 && (
         <div className="mt-6 overflow-x-auto rounded-2xl border border-[var(--line)] bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-[var(--background)] text-xs uppercase tracking-[0.2em] text-[var(--muted)]">

@@ -105,32 +105,8 @@ export default function Home() {
               View All Meds
             </a>
           </div>
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            {[
-              "Ubiquinol",
-              "Riboflavin",
-              "Vitamin D",
-              "Creatine",
-              "Glutathione",
-              "NAC",
-            ].map((med) => (
-              <div
-                key={med}
-                className="rounded-2xl border border-[var(--line)] bg-white p-4"
-              >
-                <div className="flex items-start justify-between">
-                  <p className="text-sm font-semibold text-[var(--ink)]">{med}</p>
-                  <span className="text-xs text-[var(--muted)]">Active</span>
-                </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Last change: 2025-10-28
-                </div>
-                <div className="mt-3 flex items-center justify-between text-sm">
-                  <span className="text-[var(--muted)]">Total daily</span>
-                  <span className="font-semibold text-[var(--ink)]">250 mg</span>
-                </div>
-              </div>
-            ))}
+          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 text-sm text-[var(--muted)]">
+            Once you add or import meds, you’ll see their timelines here.
           </div>
         </section>
 
