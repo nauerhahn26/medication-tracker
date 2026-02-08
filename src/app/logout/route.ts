@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,9 +10,10 @@ export async function GET(request: Request) {
   }
 
   const response = NextResponse.redirect(new URL("/login", request.url));
+  const cookieStore = await cookies();
   const supabase = createServerClient(url, anon, {
     cookies: {
-      getAll: () => request.cookies.getAll(),
+      getAll: () => cookieStore.getAll(),
       setAll: (cookies) => {
         cookies.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
