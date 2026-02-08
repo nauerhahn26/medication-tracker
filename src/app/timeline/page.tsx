@@ -271,13 +271,12 @@ export default function TimelinePage() {
                 />
                 {timeline.points.map(({ event, x }) => (
                   <g key={event.id}>
-                    <circle
-                      cx={x}
-                      cy={60}
-                      r={7}
-                      fill="#0f6b5f"
-                      title={`${event.effective_date} · ${event.total_daily_amount ?? "inactive"} ${event.unit}`}
-                    />
+                    <circle cx={x} cy={60} r={7} fill="#0f6b5f">
+                      <title>
+                        {event.effective_date} ·{" "}
+                        {event.total_daily_amount ?? "inactive"} {event.unit}
+                      </title>
+                    </circle>
                     <text
                       x={x}
                       y={30}
