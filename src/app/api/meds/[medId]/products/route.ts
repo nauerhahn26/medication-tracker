@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { dbQuery } from "@/lib/db";
 import { medProductSchema } from "@/lib/validators";
 import { requireUser } from "@/lib/auth";
 
-type Params = {
-  params: { medId: string };
-};
-
-export async function POST(request: Request, { params }: Params) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ medId: string }> },
+) {
+  const { medId } = await context.params;
   const { user, response } = await requireUser();
   if (!user) return response!;
   const body = await request.json();
@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: Params) {
      returning id`,
     [
       user.id,
-      params.medId,
+      medId,
       product.brand_name ?? null,
       product.product_url ?? null,
       product.notes ?? null,
