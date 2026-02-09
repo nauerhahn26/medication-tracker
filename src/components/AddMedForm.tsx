@@ -28,6 +28,7 @@ export default function AddMedForm() {
   const [status, setStatus] = useState<"idle" | "saving" | "error" | "done">(
     "idle",
   );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -55,6 +56,7 @@ export default function AddMedForm() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setStatus("saving");
+    setErrorMessage(null);
 
     try {
       let medId = selectedId;
@@ -69,8 +71,10 @@ export default function AddMedForm() {
             is_supplement: true,
           }),
         });
-        const json = (await res.json()) as { id?: string };
-        if (!res.ok || !json.id) throw new Error("Failed to create med");
+        const json = (await res.json()) as { id?: string; error?: string };
+        if (!res.ok || !json.id) {
+          throw new Error(json.error ?? "Failed to create med");
+        }
         medId = json.id;
       }
 
@@ -87,7 +91,10 @@ export default function AddMedForm() {
           notes: notes.trim() || null,
         }),
       });
-      if (!doseRes.ok) throw new Error("Failed to create dose event");
+      if (!doseRes.ok) {
+        const json = (await doseRes.json()) as { error?: string };
+        throw new Error(json.error ?? "Failed to create dose event");
+      }
 
       setStatus("done");
       setQuery("");
@@ -98,8 +105,13 @@ export default function AddMedForm() {
       setFrequency("");
       setPerDose("");
       setNotes("");
-    } catch {
+    } catch (err) {
       setStatus("error");
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Unable to save. Please check the fields and try again.";
+      setErrorMessage(message);
     }
   }
 
@@ -246,7 +258,9 @@ export default function AddMedForm() {
         </button>
         {status === "saving" && <span className="text-[var(--muted)]">Saving...</span>}
         {status === "done" && <span className="text-[var(--accent)]">Saved</span>}
-        {status === "error" && <span className="text-red-600">Failed</span>}
+        {status === "error" && (
+          <span className="text-red-600">{errorMessage ?? "Failed"}</span>
+        )}
       </div>
     </form>
   );
