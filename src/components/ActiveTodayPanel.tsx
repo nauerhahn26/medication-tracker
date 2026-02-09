@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type DailyMed = {
   med_id: string;
@@ -110,9 +111,12 @@ export default function ActiveTodayPanel() {
               {data.meds.map((med) => (
                 <tr key={med.med_id} className="border-t border-[var(--line)]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-[var(--ink)]">
+                    <Link
+                      href={`/meds/${med.med_id}`}
+                      className="font-semibold text-[var(--ink)] hover:text-[var(--accent)]"
+                    >
                       {med.med_name}
-                    </div>
+                    </Link>
                     {med.brand_name && (
                       <div className="text-xs text-[var(--muted)]">
                         {med.brand_name}

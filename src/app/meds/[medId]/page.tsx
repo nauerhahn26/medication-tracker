@@ -42,6 +42,8 @@ export default function MedDetailPage() {
   const params = useParams<{ medId: string }>();
   const medId = params?.medId;
   const [med, setMed] = useState<Med | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [events, setEvents] = useState<DoseEvent[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,28 @@ export default function MedDetailPage() {
       return;
     }
     await refreshEvents();
+  }
+
+  async function handleNameSave() {
+    if (!medId || !med) return;
+    const nextName = nameDraft.trim();
+    if (!nextName) return;
+    try {
+      const res = await fetch(`/api/meds/${medId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nextName }),
+      });
+      const json = (await res.json()) as { med?: Med; error?: string };
+      if (!res.ok || !json.med) {
+        throw new Error(json.error ?? "Failed to update name");
+      }
+      setMed(json.med);
+      setEditingName(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update name.");
+      setStatus("error");
+    }
   }
 
   useEffect(() => {
@@ -134,9 +158,50 @@ export default function MedDetailPage() {
           </Link>
           {med && (
             <>
-              <h1 className="text-3xl font-semibold text-[var(--ink)]">
-                {med.name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                {editingName ? (
+                  <>
+                    <input
+                      value={nameDraft}
+                      onChange={(event) => setNameDraft(event.target.value)}
+                      className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-2xl font-semibold text-[var(--ink)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleNameSave}
+                      className="rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingName(false);
+                        setNameDraft(med.name);
+                      }}
+                      className="rounded-full border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--ink)]"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-3xl font-semibold text-[var(--ink)]">
+                      {med.name}
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNameDraft(med.name);
+                        setEditingName(true);
+                      }}
+                      className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--ink)]"
+                    >
+                      Edit name
+                    </button>
+                  </>
+                )}
+              </div>
               <p className="text-sm text-[var(--muted)]">
                 {med.is_supplement ? "Supplement" : "Medication"} · Change log
               </p>
