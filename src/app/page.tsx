@@ -22,35 +22,15 @@ export default function Home() {
               Sign out
             </a>
           </div>
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div className="space-y-5">
-              <h1 className="text-4xl font-semibold leading-tight text-[var(--ink)] lg:text-6xl">
-                Clear, accurate medication history — day by day.
-              </h1>
-              <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-                Track every dose change, pause, and restart without re-adding meds.
-                Daily totals are the source of truth, with optional cadence fields
-                like BID or TID when you need them.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-[var(--line)] bg-[var(--card)] p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.45)]">
-              <p className="text-sm font-semibold text-[var(--ink)]">
-                Today&apos;s Snapshot
-              </p>
-              <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
-                <div className="flex items-center justify-between">
-                  <span>Active meds</span>
-                  <span className="font-semibold text-[var(--ink)]">See table below</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Last change logged</span>
-                  <span className="font-semibold text-[var(--ink)]">—</span>
-                </div>
-                <button className="mt-4 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white">
-                  Add Dose Change
-                </button>
-              </div>
-            </div>
+          <div className="space-y-5">
+            <h1 className="text-4xl font-semibold leading-tight text-[var(--ink)] lg:text-6xl">
+              Clear, accurate medication history — day by day.
+            </h1>
+            <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
+              Track every dose change, pause, and restart without re-adding meds.
+              Daily totals are the source of truth, with optional cadence fields
+              like BID or TID when you need them.
+            </p>
           </div>
         </header>
 
