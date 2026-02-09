@@ -3,6 +3,75 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+const csvEscape = (value: string) => {
+  if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+  return value;
+};
+
+const buildCsv = (date: string, meds: DailyMed[]) => {
+  const header = ["Date", "Med", "Total Daily", "Per Dose", "Frequency"].join(",");
+  const rows = meds.map((med) =>
+    [
+      date,
+      med.med_name,
+      med.total_daily_amount === null ? "" : `${med.total_daily_amount} ${med.unit}`,
+      med.per_dose_amount === null ? "" : `${med.per_dose_amount} ${med.unit}`,
+      med.frequency_code ?? "",
+    ]
+      .map((value) => csvEscape(String(value)))
+      .join(","),
+  );
+  return [header, ...rows].join("\n");
+};
+
+const buildPrintHtml = (date: string, meds: DailyMed[]) => {
+  const rows = meds
+    .map(
+      (med) => `
+      <tr>
+        <td>${med.med_name}</td>
+        <td>${med.total_daily_amount ?? ""} ${med.total_daily_amount === null ? "" : med.unit}</td>
+        <td>${med.per_dose_amount ?? ""} ${med.per_dose_amount === null ? "" : med.unit}</td>
+        <td>${med.frequency_code ?? ""}</td>
+      </tr>
+    `,
+    )
+    .join("");
+
+  return `<!doctype html>
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>Medication list ${date}</title>
+      <style>
+        body { font-family: "Georgia", serif; padding: 32px; color: #1b1916; }
+        h1 { font-size: 22px; margin-bottom: 8px; }
+        .meta { color: #5c574f; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #e7dcc7; font-size: 12px; }
+        th { text-transform: uppercase; letter-spacing: 0.2em; font-size: 10px; color: #7a736a; }
+      </style>
+    </head>
+    <body>
+      <h1>Medication list</h1>
+      <div class="meta">Date: ${date}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Med</th>
+            <th>Total Daily</th>
+            <th>Per Dose</th>
+            <th>Frequency</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </body>
+  </html>`;
+};
+
 type DailyMed = {
   med_id: string;
   med_name: string;
@@ -104,7 +173,6 @@ export default function ActiveTodayPanel() {
                 <th className="px-4 py-3">Total Daily</th>
                 <th className="px-4 py-3">Per Dose</th>
                 <th className="px-4 py-3">Frequency</th>
-                <th className="px-4 py-3">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -132,13 +200,45 @@ export default function ActiveTodayPanel() {
                   <td className="px-4 py-3 text-[var(--muted)]">
                     {med.frequency_code ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-[var(--muted)]">
-                    {med.notes ?? "—"}
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {status === "ready" && data && data.meds.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-20 flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const csv = buildCsv(data.date, data.meds);
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `meds-${data.date}.csv`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-xs font-semibold text-[var(--ink)]"
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const win = window.open("", "_blank", "width=900,height=700");
+              if (!win) return;
+              win.document.write(buildPrintHtml(data.date, data.meds));
+              win.document.close();
+              win.focus();
+              win.print();
+            }}
+            className="rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white"
+          >
+            Export PDF
+          </button>
         </div>
       )}
     </section>
