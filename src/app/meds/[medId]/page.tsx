@@ -56,9 +56,24 @@ export default function MedDetailPage() {
 
   async function refreshEvents() {
     if (!medId) return;
-    const eventsRes = await fetch(`/api/meds/${medId}/dose-events`);
+    const eventsRes = await fetch(`/api/meds/${medId}/dose-events`, {
+      cache: "no-store",
+    });
     const eventsJson = (await eventsRes.json()) as { events: DoseEvent[] };
     setEvents(trimLeadingInactive(eventsJson.events));
+  }
+
+  async function handleDelete(eventId: string) {
+    if (!medId) return;
+    const confirmed = window.confirm("Delete this dose change?");
+    if (!confirmed) return;
+    const res = await fetch(`/api/dose-events/${eventId}`, { method: "DELETE" });
+    if (!res.ok) {
+      setError("Unable to delete dose change. Try again.");
+      setStatus("error");
+      return;
+    }
+    await refreshEvents();
   }
 
   useEffect(() => {
@@ -67,8 +82,8 @@ export default function MedDetailPage() {
     async function load() {
       try {
         const [medRes, eventsRes] = await Promise.all([
-          fetch(`/api/meds/${medId}`),
-          fetch(`/api/meds/${medId}/dose-events`),
+          fetch(`/api/meds/${medId}`, { cache: "no-store" }),
+          fetch(`/api/meds/${medId}/dose-events`, { cache: "no-store" }),
         ]);
         const medJson = (await medRes.json()) as { med: Med; error?: string };
         const eventsJson = (await eventsRes.json()) as { events: DoseEvent[] };
@@ -258,8 +273,17 @@ export default function MedDetailPage() {
                         {event.notes ?? "Dose updated"}
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-[var(--ink)]">
-                      {event.total_daily_amount ?? "inactive"} {event.unit}
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-semibold text-[var(--ink)]">
+                        {event.total_daily_amount ?? "inactive"} {event.unit}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(event.id)}
+                        className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                   {event.frequency_code && (
