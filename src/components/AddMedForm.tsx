@@ -208,6 +208,7 @@ export default function AddMedForm() {
             <option value="mg">mg</option>
             <option value="IU">IU</option>
             <option value="mL">mL</option>
+            <option value="packet">packet</option>
           </select>
         </div>
         <div className="grid gap-2 md:grid-cols-2">

@@ -82,6 +82,7 @@ export default function DoseEventForm({ medId, onCreated }: Props) {
             <option value="mg">mg</option>
             <option value="IU">IU</option>
             <option value="mL">mL</option>
+            <option value="packet">packet</option>
           </select>
         </div>
         <input
