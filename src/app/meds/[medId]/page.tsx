@@ -45,6 +45,15 @@ export default function MedDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [events, setEvents] = useState<DoseEvent[]>([]);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [eventDraft, setEventDraft] = useState<{
+    effective_date: string;
+    total_daily_amount: string;
+    unit: string;
+    per_dose_amount: string;
+    frequency_code: string;
+    notes: string;
+  } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +85,56 @@ export default function MedDetailPage() {
       return;
     }
     await refreshEvents();
+  }
+
+  function startEditEvent(event: DoseEvent) {
+    setEditingEventId(event.id);
+    setEventDraft({
+      effective_date: formatDate(event.effective_date),
+      total_daily_amount:
+        event.total_daily_amount === null ? "" : String(event.total_daily_amount),
+      unit: event.unit,
+      per_dose_amount: event.per_dose_amount === null ? "" : String(event.per_dose_amount),
+      frequency_code: event.frequency_code ?? "",
+      notes: event.notes ?? "",
+    });
+  }
+
+  async function handleEventSave() {
+    if (!editingEventId || !eventDraft) return;
+    try {
+      const res = await fetch(`/api/dose-events/${editingEventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          effective_date: eventDraft.effective_date,
+          total_daily_amount:
+            eventDraft.total_daily_amount.trim() === ""
+              ? null
+              : Number(eventDraft.total_daily_amount),
+          unit: eventDraft.unit,
+          per_dose_amount:
+            eventDraft.per_dose_amount.trim() === ""
+              ? null
+              : Number(eventDraft.per_dose_amount),
+          frequency_code: eventDraft.frequency_code.trim() || null,
+          notes: eventDraft.notes.trim() || null,
+        }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Failed to update dose event");
+      setEditingEventId(null);
+      setEventDraft(null);
+      await refreshEvents();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update dose event.");
+      setStatus("error");
+    }
+  }
+
+  function cancelEditEvent() {
+    setEditingEventId(null);
+    setEventDraft(null);
   }
 
   async function handleNameSave() {
@@ -196,8 +255,9 @@ export default function MedDetailPage() {
                         setEditingName(true);
                       }}
                       className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--ink)]"
+                      aria-label="Edit med name"
                     >
-                      Edit name
+                      ✎
                     </button>
                   </>
                 )}
@@ -329,33 +389,137 @@ export default function MedDetailPage() {
                   key={event.id}
                   className="rounded-2xl border border-[var(--line)] bg-white p-4 text-sm"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-semibold text-[var(--ink)]">
-                        {formatDate(event.effective_date)}
+                  {editingEventId === event.id && eventDraft ? (
+                    <div className="space-y-3">
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <input
+                          type="date"
+                          value={eventDraft.effective_date}
+                          onChange={(e) =>
+                            setEventDraft({ ...eventDraft, effective_date: e.target.value })
+                          }
+                          className="rounded-xl border border-[var(--line)] px-3 py-2"
+                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Total daily"
+                            value={eventDraft.total_daily_amount}
+                            onChange={(e) =>
+                              setEventDraft({
+                                ...eventDraft,
+                                total_daily_amount: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-xl border border-[var(--line)] px-3 py-2"
+                          />
+                          <select
+                            value={eventDraft.unit}
+                            onChange={(e) =>
+                              setEventDraft({ ...eventDraft, unit: e.target.value })
+                            }
+                            className="rounded-xl border border-[var(--line)] px-2"
+                          >
+                            <option value="mg">mg</option>
+                            <option value="IU">IU</option>
+                            <option value="mL">mL</option>
+                            <option value="packet">packet</option>
+                            <option value="drops">drops</option>
+                          </select>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="Per dose (optional)"
+                          value={eventDraft.per_dose_amount}
+                          onChange={(e) =>
+                            setEventDraft({
+                              ...eventDraft,
+                              per_dose_amount: e.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-[var(--line)] px-3 py-2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Frequency (QD/BID/TID)"
+                          value={eventDraft.frequency_code}
+                          onChange={(e) =>
+                            setEventDraft({
+                              ...eventDraft,
+                              frequency_code: e.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-[var(--line)] px-3 py-2"
+                        />
                       </div>
-                      <div className="text-xs text-[var(--muted)]">
-                        {event.notes ?? "Dose updated"}
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={eventDraft.notes}
+                        onChange={(e) =>
+                          setEventDraft({ ...eventDraft, notes: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-[var(--line)] px-3 py-2"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleEventSave}
+                          className="rounded-full bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditEvent}
+                          className="rounded-full border border-[var(--line)] px-4 py-2 text-xs font-semibold text-[var(--ink)]"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm font-semibold text-[var(--ink)]">
-                        {event.total_daily_amount ?? "inactive"} {event.unit}
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-semibold text-[var(--ink)]">
+                            {formatDate(event.effective_date)}
+                          </div>
+                          <div className="text-xs text-[var(--muted)]">
+                            {event.notes ?? "Dose updated"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-semibold text-[var(--ink)]">
+                            {event.total_daily_amount ?? "inactive"} {event.unit}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => startEditEvent(event)}
+                            className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--ink)]"
+                            aria-label="Edit dose event"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(event.id)}
+                            className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50"
+                            aria-label="Delete dose event"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(event.id)}
-                        className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {event.frequency_code && (
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      {event.per_dose_amount ?? ""} {event.unit} ·{" "}
-                      {event.frequency_code}
-                    </div>
+                      {event.frequency_code && (
+                        <div className="mt-2 text-xs text-[var(--muted)]">
+                          {event.per_dose_amount ?? ""} {event.unit} ·{" "}
+                          {event.frequency_code}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
