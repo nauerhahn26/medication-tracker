@@ -21,15 +21,18 @@ export default function Home() {
               Sign out
             </a>
           </div>
-          <div className="space-y-5">
-            <h1 className="text-4xl font-semibold leading-tight text-[var(--ink)] lg:text-6xl">
-              Clear, accurate medication history — day by day.
-            </h1>
-            <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-              Track every dose change, pause, and restart without re-adding meds.
-              Daily totals are the source of truth, with optional cadence fields
-              like BID or TID when you need them.
-            </p>
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+            <div className="space-y-5">
+              <h1 className="text-4xl font-semibold leading-tight text-[var(--ink)] lg:text-6xl">
+                Clear, accurate medication history — day by day.
+              </h1>
+              <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
+                Track every dose change, pause, and restart without re-adding meds.
+                Daily totals are the source of truth, with optional cadence fields
+                like BID or TID when you need them.
+              </p>
+            </div>
+            <AddMedForm />
           </div>
         </header>
 
@@ -59,7 +62,6 @@ export default function Home() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <AddMedForm />
           <div className="rounded-3xl border border-[var(--line)] bg-[var(--accent)] p-6 text-white">
             <h3 className="text-xl font-semibold">Titration Builder</h3>
             <p className="mt-2 text-sm text-white/80">
