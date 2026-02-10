@@ -1,6 +1,5 @@
 import ActiveTodayPanel from "@/components/ActiveTodayPanel";
 import AddMedForm from "@/components/AddMedForm";
-import DailyLookupPanel from "@/components/DailyLookupPanel";
 import ImportPanel from "@/components/ImportPanel";
 
 export default function Home() {
@@ -33,37 +32,6 @@ export default function Home() {
             </p>
           </div>
         </header>
-
-        <section className="grid gap-6 lg:grid-cols-3">
-          <ImportPanel />
-          <DailyLookupPanel />
-          <div className="rounded-3xl border border-[var(--line)] bg-white/70 p-6 backdrop-blur">
-            <p className="text-sm font-semibold text-[var(--ink)]">Weekly Check-In</p>
-            <p className="mt-3 text-sm text-[var(--muted)]">
-              A gentle reminder to log changes so nothing falls through.
-            </p>
-            <div className="mt-5 flex items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm">
-              <span className="text-[var(--muted)]">Any changes this week?</span>
-              <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white">
-                No changes
-              </span>
-            </div>
-            <div className="mt-4 flex items-center gap-3">
-              <a
-                href="/imports/mito-review"
-                className="inline-flex items-center text-xs font-semibold text-[var(--accent)]"
-              >
-                Open full import review
-              </a>
-              <a
-                href="/timeline"
-                className="inline-flex items-center text-xs font-semibold text-[var(--accent)]"
-              >
-                Open timeline explorer
-              </a>
-            </div>
-          </div>
-        </section>
 
         <ActiveTodayPanel />
 
@@ -110,6 +78,10 @@ export default function Home() {
               </button>
             </div>
           </div>
+        </section>
+
+        <section className="grid gap-6">
+          <ImportPanel />
         </section>
 
         <footer className="flex flex-col gap-3 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)]">

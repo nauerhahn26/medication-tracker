@@ -98,13 +98,14 @@ export default function ActiveTodayPanel() {
   const [data, setData] = useState<DailyResponse | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(todayIso());
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const date = todayIso();
-        const res = await fetch(`/api/daily?date=${date}`);
+        const date = selectedDate || todayIso();
+        const res = await fetch(`/api/daily?date=${date}`, { cache: "no-store" });
         const json = (await res.json()) as DailyResponse;
         if (!res.ok) throw new Error(json.error ?? "Failed");
         if (active) {
@@ -124,7 +125,7 @@ export default function ActiveTodayPanel() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedDate]);
 
   return (
     <section className="rounded-[32px] border border-[var(--line)] bg-[var(--card)] p-8">
@@ -137,16 +138,19 @@ export default function ActiveTodayPanel() {
             Alphabetical list with total daily volume and any dosing details.
           </p>
         </div>
-        {data?.date && (
-          <div className="flex items-center gap-3">
-            <div className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-xs font-semibold text-[var(--ink)]">
-              {data.date}
-            </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+            className="rounded-full border border-[var(--line)] bg-white px-4 py-2 text-xs font-semibold text-[var(--ink)]"
+          />
+          {data?.date && (
             <div className="text-xs text-[var(--muted)]">
               {data.meds.length} active
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {status === "loading" && (
