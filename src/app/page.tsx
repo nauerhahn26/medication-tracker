@@ -38,29 +38,6 @@ export default function Home() {
 
         <ActiveTodayPanel />
 
-        <section className="rounded-[32px] border border-[var(--line)] bg-[var(--card)] p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-[var(--ink)]">
-                Medication Timeline
-              </h2>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                Each med keeps a single timeline of dose events. Dose is active
-                until the next change; null or 0 makes the med inactive.
-              </p>
-            </div>
-            <a
-              href="/meds"
-              className="h-11 rounded-full border border-[var(--line)] px-4 text-sm font-semibold text-[var(--ink)]"
-            >
-              View All Meds
-            </a>
-          </div>
-          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-6 text-sm text-[var(--muted)]">
-            Once you add or import meds, you’ll see their timelines here.
-          </div>
-        </section>
-
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-3xl border border-[var(--line)] bg-[var(--accent)] p-6 text-white">
             <h3 className="text-xl font-semibold">Titration Builder</h3>
