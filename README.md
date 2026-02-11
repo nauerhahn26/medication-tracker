@@ -25,6 +25,7 @@ PostgreSQL is used for meds, products, and dose events.
 1. Copy `.env.example` to `.env.local` and set `DATABASE_URL`.
 2. Run the migration in `db/migrations/001_init.sql` using `psql` or your preferred tool.
 3. Run `db/migrations/003_add_user_id.sql` for local dev.
+4. Run `db/migrations/005_ai_interactions.sql` for AI interaction storage.
 
 ## Supabase Auth (Production)
 
@@ -32,7 +33,9 @@ PostgreSQL is used for meds, products, and dose events.
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `OPENAI_API_KEY`
 2. In Supabase SQL editor, run `db/supabase/003_auth_rls.sql` to add user ownership and RLS.
+3. Run `db/migrations/005_ai_interactions.sql` in Supabase to enable AI interaction storage.
 
 ## API Endpoints
 
@@ -40,11 +43,28 @@ PostgreSQL is used for meds, products, and dose events.
 `POST /api/meds`  
 `POST /api/meds/:medId/products`  
 `GET /api/meds/:medId/dose-events`  
+`PATCH /api/meds/:medId`  
 `POST /api/dose-events`  
+`PATCH /api/dose-events/:eventId`  
+`DELETE /api/dose-events/:eventId`  
 `GET /api/daily?date=YYYY-MM-DD`
 `POST /api/imports/mito-sheet`
 `POST /api/imports/mito-sheet?commit=true`
 `GET /api/timeline/events`
+`GET /api/patient-context`
+`PUT /api/patient-context`
+`GET /api/screen/latest`
+`POST /api/screen/full`
+`POST /api/screen/delta`
+
+## AI Drug-to-Drug Analysis
+
+- Prompts live in `prompts/medcheck_system.txt`, `prompts/medcheck_full.txt`, and `prompts/medcheck_delta.txt`.
+- The UI is at `/ai-screen` and supports FULL + DELTA screening.
+- Model selection is exposed in the UI (default: `gpt-5.2`).
+- Responses are stored in `med_interaction_state` and `med_interaction_screen`.
+
+Disclaimer: The AI screen is educational only and should be reviewed with a clinician or pharmacist.
 
 This project uses Tailwind CSS and a custom Google Font pairing for the UI.
 

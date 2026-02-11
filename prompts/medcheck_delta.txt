@@ -1,0 +1,25 @@
+Task: DELTA interaction screen. Compare a NEW item against the existing regimen state. Do not redo the full regimen.
+
+Return JSON only:
+{
+  "disclaimer_short": string,
+  "new_item_fingerprint": <same med_fingerprints object>,
+  "delta_interactions": {
+    "contraindicated_or_urgent_review": [interaction objects],
+    "major": [interaction objects],
+    "moderate": [interaction objects],
+    "minor_or_theoretical": [interaction objects]
+  },
+  "monitoring_topics_added": [monitoring topic objects],
+  "unknowns_missing_info": [unknown objects],
+  "questions_for_clinician": [string]
+}
+
+Inputs:
+existing_med_fingerprints = <<PASTE prior med_fingerprints ARRAY HERE>>
+new_item = <<PASTE single regimen item HERE>>
+
+Rules:
+- Only produce interactions that involve the new item ID plus one or more existing IDs.
+- If the new item creates a grouped risk (e.g., QT cluster now includes multiple agents, or QT drug level increases due to inhibitor), include a single grouped interaction with qt_combo_risk and evidence_signal.
+- Keep it concise: prioritize urgent/major first.

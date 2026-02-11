@@ -1,0 +1,129 @@
+Task: Run a FULL interaction screen on the current regimen.
+
+Return JSON that follows this schema (no extra keys):
+{
+  "disclaimer_short": string,
+  "coverage": [
+    {
+      "id": string,
+      "input_name": string,
+      "normalized_name": string|null,
+      "recognized": "yes"|"ambiguous"|"no",
+      "notes": string
+    }
+  ],
+  "med_fingerprints": [
+    {
+      "id": string,
+      "name": string,
+      "dose_route_freq": string,
+      "pk": {
+        "cyp_substrates": [string],
+        "cyp_inhibitors": [string],
+        "cyp_inducers": [string],
+        "ugt": [string],
+        "transporters": [string],
+        "absorption_flags": [string],
+        "renal_flags": [string],
+        "hepatic_flags": [string]
+      },
+      "pd_flags": [string],
+      "cardiac_flags": {
+        "qt_tdp_category": "KNOWN"|"POSSIBLE"|"CONDITIONAL"|"NONE"|"UNKNOWN",
+        "bradycardia_risk": "yes"|"no"|"unknown",
+        "electrolyte_effects": [string],
+        "notes": string
+      },
+      "high_risk_populations_notes": [string],
+      "confidence": "high"|"medium"|"low"
+    }
+  ],
+  "interactions": {
+    "contraindicated_or_urgent_review": [
+      {
+        "mechanism": "PK_CYP"|"PK_UGT"|"PK_TRANSPORT"|"PK_ABSORB"|"PD"|"DUPLICATE_INGREDIENT"|"FOOD_HERB"|"LAB_INTERFERENCE"|"THERAPEUTIC_ANTAGONISM"|"OTHER",
+        "items": [string],
+        "what_might_happen": string,
+        "why": string,
+        "risk_tags": [string],
+        "qt_combo_risk": "HIGH"|"MODERATE"|"LOW"|"UNCLEAR"|null,
+        "evidence_signal": "WELL_ESTABLISHED"|"MODERATE"|"LIMITED_CASE_REPORTS"|"THEORETICAL",
+        "discuss_with_clinician": string,
+        "confidence": "high"|"medium"|"low"
+      }
+    ],
+    "major": [same object as above],
+    "moderate": [same object as above],
+    "minor_or_theoretical": [same object as above]
+  },
+  "monitoring_topics": [
+    {
+      "topic": string,
+      "items": [string],
+      "why": string
+    }
+  ],
+  "unknowns_missing_info": [
+    {
+      "id": string,
+      "issue": string,
+      "what_to_provide": string
+    }
+  ],
+  "questions_for_clinician": [string]
+}
+
+Severity rules:
+- If “contraindicated_or_urgent_review”: credible risk of severe harm OR well-known contraindication/classic dangerous combo.
+- “major”: clinically significant and plausible; may require professional review/monitoring/alternatives.
+- “moderate”: possible meaningful effect; discuss and consider monitoring.
+- “minor_or_theoretical”: low likelihood/impact or weak evidence; include only if useful.
+
+PD flag vocabulary (use short tags):
+Examples:
+"CNS_DEP", "RESP_DEP", "SEROTONERGIC", "QT_CLUSTER", "BLEEDING",
+"ANTICHOL", "BP_LOW", "BRADY", "SEIZURE_THRESH_LOW",
+"NEPHROTOX", "HEPATOTOX",
+"K_HIGH", "K_LOW", "MG_LOW", "NA_LOW",
+"HYPOGLYCEMIA", "HYPERGLYCEMIA", "STIMULANT",
+"IMMUNOSUPPRESS", "PHOTOSENS", "MYOPATHY_RISK"
+
+PK string conventions:
+- CYP entries like "CYP3A4(substrate)" or "CYP2D6(inhibitor:weak)" or "CYP3A4(inducer:strong)"
+- Transporters like "P-gp(substrate)" / "OATP1B1(inhibitor)"
+- Absorption flags like "CHELATION_RISK", "GASTRIC_PH_DEP", "SEPARATE_ADMIN", "GRAPEFRUIT_SENSITIVE"
+
+Inputs (JSON):
+patient_context = {
+  "age_years": <number|null>,
+  "weight_kg": <number|null>,
+  "sex_at_birth": "female"|"male"|"unknown"|null,
+  "renal_impairment": "none"|"unknown"|"mild"|"moderate"|"severe"|null,
+  "hepatic_impairment": "none"|"unknown"|"mild"|"moderate"|"severe"|null,
+  "baseline_qtc_ms": <number|null>,
+  "cardiac_history": [<string>],
+  "notable_conditions": [<string>],
+  "allergies": [<string>]
+}
+
+regimen = [
+  {
+    "id": "m1",
+    "name": "<as taken / label>",
+    "active_ingredients_if_known": ["<optional>"],
+    "dose": "<e.g., 25 mg>",
+    "route": "<e.g., PO>",
+    "frequency": "<e.g., qAM / BID / qHS>",
+    "indication_optional": "<optional>",
+    "notes_optional": "<optional, e.g., 'extended release', 'with food'>"
+  }
+  ... more items ...
+]
+
+Now run the screen.
+
+patient_context:
+<<PASTE patient_context JSON HERE>>
+
+regimen:
+<<PASTE regimen JSON HERE>>

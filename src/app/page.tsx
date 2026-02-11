@@ -17,6 +17,9 @@ export default function Home() {
             <a href="/meds" className="font-semibold text-[var(--accent)]">
               Meds
             </a>
+            <a href="/ai-screen" className="font-semibold text-[var(--accent)]">
+              AI Drug-to-Drug Analysis
+            </a>
             <a href="/logout" className="font-semibold text-[var(--muted)]">
               Sign out
             </a>
@@ -31,6 +34,13 @@ export default function Home() {
                 Daily totals are the source of truth, with optional cadence fields
                 like BID or TID when you need them.
               </p>
+              <a
+                href="/ai-screen"
+                className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
+              >
+                <span>Run AI Drug-to-Drug Analysis</span>
+                <span aria-hidden="true">✦</span>
+              </a>
             </div>
             <AddMedForm />
           </div>
