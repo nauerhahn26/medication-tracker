@@ -123,6 +123,25 @@ export default function AiScreenPage() {
   const [deltaStatus, setDeltaStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
 
+  const nameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const med of daily?.meds ?? []) {
+      map.set(med.med_id, med.med_name);
+    }
+    for (const demo of demoItems) {
+      map.set(demo.id, demo.name);
+    }
+    if (deltaResult?.new_item_fingerprint) {
+      map.set(deltaResult.new_item_fingerprint.id, deltaResult.new_item_fingerprint.name);
+    }
+    if (fullResult?.coverage) {
+      for (const item of fullResult.coverage) {
+        map.set(item.id, item.input_name);
+      }
+    }
+    return map;
+  }, [daily, demoItems, deltaResult, fullResult]);
+
   useEffect(() => {
     let active = true;
     async function loadContext() {
@@ -676,17 +695,23 @@ export default function AiScreenPage() {
                       </p>
                       <div className="mt-3 space-y-3">
                         {list.map((item, idx) => {
-                          const names = (item.items ?? []).join(", ");
+                          const ids = item.items
+                            ? (item.items as string[])
+                            : [
+                                ...(item.existing_item_ids ?? []),
+                                ...(item.new_item_id ? [item.new_item_id] : []),
+                              ];
+                          const names = ids.map((id: string) => nameById.get(id) ?? id).join(", ");
                           return (
                             <div key={`${key}-${idx}`} className="rounded-xl border border-[var(--line)] bg-[var(--background)] p-3">
                               <div className="text-sm font-semibold text-[var(--ink)]">
                                 <strong>{names}</strong>
                               </div>
                               <div className="mt-2 text-xs text-[var(--muted)]">
-                                {item.what_might_happen}
+                                {item.what_might_happen ?? item.summary}
                               </div>
                               <div className="mt-1 text-xs text-[var(--muted)]">
-                                {item.why}
+                                {item.why ?? item.why_it_matters}
                               </div>
                             </div>
                           );

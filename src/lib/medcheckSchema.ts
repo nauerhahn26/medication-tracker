@@ -37,6 +37,17 @@ const interaction = z.object({
   confidence,
 });
 
+const deltaInteractionAlt = z.object({
+  type: z.string(),
+  new_item_id: z.string(),
+  existing_item_ids: z.array(z.string()),
+  summary: z.string(),
+  mechanisms: z.array(z.string()),
+  qt_combo_risk: qtComboRisk.optional(),
+  evidence_signal: evidenceSignal.optional(),
+  why_it_matters: z.string(),
+});
+
 const fingerprint = z.object({
   id: z.string(),
   name: z.string(),
@@ -76,10 +87,22 @@ const monitoringTopic = z.object({
   why: z.string(),
 });
 
+const deltaMonitoringTopicAlt = z.object({
+  topic: z.string(),
+  rationale: z.string(),
+  what_to_monitor: z.array(z.string()),
+});
+
 const unknownItem = z.object({
   id: z.string(),
   issue: z.string(),
   what_to_provide: z.string(),
+});
+
+const deltaUnknownAlt = z.object({
+  item_ids: z.array(z.string()),
+  unknown: z.string(),
+  why_it_matters: z.string(),
 });
 
 export const medcheckFullSchema = z.object({
@@ -101,12 +124,16 @@ export const medcheckDeltaSchema = z.object({
   disclaimer_short: z.string(),
   new_item_fingerprint: fingerprint,
   delta_interactions: z.object({
-    contraindicated_or_urgent_review: z.array(interaction),
-    major: z.array(interaction),
-    moderate: z.array(interaction),
-    minor_or_theoretical: z.array(interaction),
+    contraindicated_or_urgent_review: z.array(
+      z.union([interaction, deltaInteractionAlt]),
+    ),
+    major: z.array(z.union([interaction, deltaInteractionAlt])),
+    moderate: z.array(z.union([interaction, deltaInteractionAlt])),
+    minor_or_theoretical: z.array(z.union([interaction, deltaInteractionAlt])),
   }),
-  monitoring_topics_added: z.array(monitoringTopic),
-  unknowns_missing_info: z.array(unknownItem),
+  monitoring_topics_added: z.array(
+    z.union([monitoringTopic, deltaMonitoringTopicAlt]),
+  ),
+  unknowns_missing_info: z.array(z.union([unknownItem, deltaUnknownAlt])),
   questions_for_clinician: z.array(z.string()),
 });
