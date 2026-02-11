@@ -46,6 +46,7 @@ type FullResponse = {
     id: string;
     input_name: string;
   }>;
+  regimen?: RegimenItem[];
   interactions: {
     contraindicated_or_urgent_review: unknown[];
     major: unknown[];
@@ -114,6 +115,10 @@ export default function AiScreenPage() {
   );
   const [fullResult, setFullResult] = useState<FullResponse | null>(null);
   const [deltaResult, setDeltaResult] = useState<DeltaResponse | null>(null);
+  const [savedRuns, setSavedRuns] = useState<
+    Array<{ id: string; mode: "full" | "delta"; model: string; created_at: string; response: any }>
+  >([]);
+  const [activeTab, setActiveTab] = useState<"latest" | "history">("latest");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [deltaStatus, setDeltaStatus] = useState<"idle" | "saving" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -126,6 +131,38 @@ export default function AiScreenPage() {
       if (active && json.context) setContext(json.context);
     }
     loadContext();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadLatest() {
+      const res = await fetch("/api/screen/latest");
+      const json = (await res.json()) as {
+        last_full_response: FullResponse | null;
+      };
+      if (active && json.last_full_response) {
+        setFullResult(json.last_full_response);
+      }
+    }
+    loadLatest();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadHistory() {
+      const res = await fetch("/api/screen/history");
+      const json = (await res.json()) as {
+        runs: Array<{ id: string; mode: "full" | "delta"; model: string; created_at: string; response: any }>;
+      };
+      if (active) setSavedRuns(json.runs ?? []);
+    }
+    loadHistory();
     return () => {
       active = false;
     };
@@ -206,6 +243,7 @@ export default function AiScreenPage() {
       }
       setFullResult(json);
       setStatus("idle");
+      setActiveTab("latest");
     } catch (err) {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Failed to run screen.");
@@ -232,6 +270,7 @@ export default function AiScreenPage() {
       }
       setDeltaResult(json);
       setDeltaStatus("idle");
+      setActiveTab("latest");
     } catch (err) {
       setDeltaStatus("error");
       setMessage(err instanceof Error ? err.message : "Failed to run delta.");
@@ -543,10 +582,34 @@ export default function AiScreenPage() {
         {(fullResult || deltaResult) && (
           <section className="rounded-3xl border border-[var(--line)] bg-white/80 p-6 text-sm">
             <h2 className="text-base font-semibold text-[var(--ink)]">Latest results</h2>
+            <div className="mt-3 flex gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab("latest")}
+                className={`rounded-full border px-3 py-1 ${
+                  activeTab === "latest"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    : "border-[var(--line)] text-[var(--muted)]"
+                }`}
+              >
+                Latest
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("history")}
+                className={`rounded-full border px-3 py-1 ${
+                  activeTab === "history"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    : "border-[var(--line)] text-[var(--muted)]"
+                }`}
+              >
+                History
+              </button>
+            </div>
             <p className="mt-2 text-xs text-[var(--muted)]">
               {fullResult?.disclaimer_short ?? deltaResult?.disclaimer_short}
             </p>
-            {fullResult && (
+            {activeTab === "latest" && fullResult && (
               <div className="mt-4 space-y-4">
                 {(
                   [
@@ -594,7 +657,7 @@ export default function AiScreenPage() {
                 })}
               </div>
             )}
-            {deltaResult && (
+            {activeTab === "latest" && deltaResult && (
               <div className="mt-4 space-y-4">
                 {(
                   [
@@ -634,7 +697,8 @@ export default function AiScreenPage() {
                 })}
               </div>
             )}
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {activeTab === "latest" && (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
               {fullResult && (
                 <>
                   <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
@@ -676,6 +740,40 @@ export default function AiScreenPage() {
                 </>
               )}
             </div>
+            )}
+
+            {activeTab === "history" && (
+              <div className="mt-4 space-y-3">
+                {savedRuns.length === 0 && (
+                  <div className="text-xs text-[var(--muted)]">
+                    No previous runs yet.
+                  </div>
+                )}
+                {savedRuns.map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => {
+                      if (run.mode === "full") {
+                        setFullResult(run.response as FullResponse);
+                        setDeltaResult(null);
+                      } else {
+                        setDeltaResult(run.response as DeltaResponse);
+                      }
+                      setActiveTab("latest");
+                    }}
+                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-left text-xs"
+                  >
+                    <span className="font-semibold text-[var(--ink)]">
+                      {run.mode.toUpperCase()} · {run.model}
+                    </span>
+                    <span className="text-[var(--muted)]">
+                      {new Date(run.created_at).toLocaleString()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
             <details className="mt-4">
               <summary className="cursor-pointer text-xs font-semibold text-[var(--accent)]">
                 View JSON
