@@ -18,9 +18,16 @@ async function callModel(model: string, systemPrompt: string, userPrompt: string
   const response = await client.responses.create({
     model,
     instructions: systemPrompt,
-    input: userPrompt,
+    input: `${userPrompt}\n\nIMPORTANT: Return JSON only. Do not include any extra text.`,
   });
   return response.output_text;
+}
+
+function extractJson(text: string) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return text;
+  return text.slice(start, end + 1);
 }
 
 export async function POST(request: Request) {
@@ -52,17 +59,22 @@ export async function POST(request: Request) {
   let raw = await callModel(body.model, systemPrompt, userPrompt);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(extractJson(raw));
   } catch {
     const repair = `${userPrompt}\n\nReturn valid JSON only.`;
     raw = await callModel(body.model, systemPrompt, repair);
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(extractJson(raw));
   }
 
   const validated = medcheckDeltaSchema.safeParse(parsed);
   if (!validated.success) {
+    await dbQuery(
+      `insert into med_interaction_screen (user_id, mode, model, new_item, response)
+       values ($1, 'delta', $2, $3, $4)`,
+      [user.id, body.model, JSON.stringify(body.new_item), JSON.stringify({ error: "invalid_json", raw })],
+    );
     return NextResponse.json(
-      { error: "Model returned invalid JSON.", details: validated.error.flatten() },
+      { error: "Model returned invalid JSON.", raw },
       { status: 422 },
     );
   }

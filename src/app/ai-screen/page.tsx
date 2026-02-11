@@ -159,8 +159,11 @@ export default function AiScreenPage() {
           model,
         }),
       });
-      const json = (await res.json()) as FullResponse & { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Failed to run screen.");
+      const json = (await res.json()) as FullResponse & { error?: string; raw?: string };
+      if (!res.ok) {
+        const snippet = json.raw ? `\n\nRaw model output:\n${json.raw}` : "";
+        throw new Error(`${json.error ?? "Failed to run screen."}${snippet}`);
+      }
       setFullResult(json);
       setStatus("idle");
     } catch (err) {
@@ -182,8 +185,11 @@ export default function AiScreenPage() {
           model,
         }),
       });
-      const json = (await res.json()) as DeltaResponse & { error?: string };
-      if (!res.ok) throw new Error(json.error ?? "Failed to run delta.");
+      const json = (await res.json()) as DeltaResponse & { error?: string; raw?: string };
+      if (!res.ok) {
+        const snippet = json.raw ? `\n\nRaw model output:\n${json.raw}` : "";
+        throw new Error(`${json.error ?? "Failed to run delta."}${snippet}`);
+      }
       setDeltaResult(json);
       setDeltaStatus("idle");
     } catch (err) {
