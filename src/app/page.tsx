@@ -38,7 +38,7 @@ export default function Home() {
 
         <ActiveTodayPanel />
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-[var(--line)] bg-[var(--accent)] p-6 text-white">
             <h3 className="text-xl font-semibold">Titration Builder</h3>
             <p className="mt-2 text-sm text-white/80">
@@ -57,10 +57,9 @@ export default function Home() {
               </button>
             </div>
           </div>
-        </section>
-
-        <section className="grid gap-6">
-          <ImportPanel />
+          <div className="lg:self-start">
+            <ImportPanel />
+          </div>
         </section>
 
         <footer className="flex flex-col gap-3 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)]">
