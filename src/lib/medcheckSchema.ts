@@ -17,6 +17,7 @@ const mechanism = z.enum([
   "PK_TRANSPORT",
   "PK_ABSORB",
   "PD",
+  "QT_CLUSTER",
   "DUPLICATE_INGREDIENT",
   "FOOD_HERB",
   "LAB_INTERFERENCE",
