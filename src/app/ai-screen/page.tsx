@@ -108,6 +108,10 @@ export default function AiScreenPage() {
   const [daily, setDaily] = useState<DailyResponse | null>(null);
   const [demoItems, setDemoItems] = useState<RegimenItem[]>([]);
   const [newDemo, setNewDemo] = useState({ name: "", dose: "", route: "", frequency: "" });
+  const [demoOptions, setDemoOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [demoRxOptions, setDemoRxOptions] = useState<Array<{ name: string; rxcui: string | null }>>(
+    [],
+  );
   const [fullResult, setFullResult] = useState<FullResponse | null>(null);
   const [deltaResult, setDeltaResult] = useState<DeltaResponse | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -139,6 +143,34 @@ export default function AiScreenPage() {
       active = false;
     };
   }, [date]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadDemoOptions() {
+      const query = newDemo.name.trim();
+      if (!query) {
+        if (active) {
+          setDemoOptions([]);
+          setDemoRxOptions([]);
+        }
+        return;
+      }
+      const res = await fetch(`/api/meds/search?query=${encodeURIComponent(query)}`);
+      const json = (await res.json()) as { meds: Array<{ id: string; name: string }> };
+      const rxRes = await fetch(
+        `/api/meds/rxnorm-search?query=${encodeURIComponent(query)}`,
+      );
+      const rxJson = (await rxRes.json()) as { meds: Array<{ name: string; rxcui: string | null }> };
+      if (active) {
+        setDemoOptions(json.meds ?? []);
+        setDemoRxOptions(rxJson.meds ?? []);
+      }
+    }
+    loadDemoOptions();
+    return () => {
+      active = false;
+    };
+  }, [newDemo.name]);
 
   const regimen = useMemo(() => {
     const fromDaily = (daily?.meds ?? []).map(buildItemFromDaily);
@@ -372,13 +404,52 @@ export default function AiScreenPage() {
           <div className="rounded-3xl border border-[var(--line)] bg-white/80 p-6">
             <h2 className="text-base font-semibold text-[var(--ink)]">Add demo meds</h2>
             <div className="mt-4 grid gap-3 text-sm">
-              <input
-                type="text"
-                placeholder="Name"
-                value={newDemo.name}
-                onChange={(e) => setNewDemo({ ...newDemo, name: e.target.value })}
-                className="rounded-2xl border border-[var(--line)] bg-white px-4 py-2"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={newDemo.name}
+                  onChange={(e) => setNewDemo({ ...newDemo, name: e.target.value })}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-2"
+                />
+                {(demoOptions.length > 0 || demoRxOptions.length > 0) && (
+                  <div className="absolute z-10 mt-2 w-full rounded-2xl border border-[var(--line)] bg-white p-2 text-sm shadow-lg">
+                    {demoOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          setNewDemo({ ...newDemo, name: option.name });
+                          setDemoOptions([]);
+                          setDemoRxOptions([]);
+                        }}
+                        className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--background)]"
+                      >
+                        {option.name}
+                      </button>
+                    ))}
+                    {demoRxOptions.map((option) => (
+                      <button
+                        key={`${option.name}-${option.rxcui ?? "rx"}`}
+                        type="button"
+                        onClick={() => {
+                          setNewDemo({ ...newDemo, name: option.name });
+                          setDemoOptions([]);
+                          setDemoRxOptions([]);
+                        }}
+                        className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--background)]"
+                      >
+                        {option.name}
+                        {option.rxcui ? (
+                          <span className="ml-2 text-xs text-[var(--muted)]">
+                            RxCUI {option.rxcui}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
                 type="text"
                 placeholder="Dose (e.g., 10 mg)"
