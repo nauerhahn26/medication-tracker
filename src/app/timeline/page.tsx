@@ -3,21 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type DailyMed = {
-  med_id: string;
-  med_name: string;
-  total_daily_amount: number | null;
-  unit: string;
-  frequency_code: string | null;
-  per_dose_amount: number | null;
-};
-
-type DailyResponse = {
-  date: string;
-  meds: DailyMed[];
-  error?: string;
-};
-
 type Med = { id: string; name: string };
 
 type DoseEvent = {
@@ -27,10 +12,6 @@ type DoseEvent = {
   total_daily_amount: number | null;
   unit: string;
 };
-
-function isoToday() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function normalizeDate(value: string) {
   return value ? value.slice(0, 10) : value;
@@ -48,6 +29,11 @@ function formatShort(value: string) {
   return `${d.getMonth() + 1}/${d.getDate()}/${yy}`;
 }
 
+function formatMonthDay(value: string) {
+  const d = parseDate(value);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 function formatMonth(value: string) {
   const d = parseDate(value);
   return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(-2)}`;
@@ -60,37 +46,25 @@ function formatWeek(value: string) {
   return `Wk ${start.getMonth() + 1}/${start.getDate()}`;
 }
 
-function toDayIndex(date: Date) {
-  return Math.floor(date.getTime() / 86400000);
-}
-
-function fromDayIndex(day: number) {
-  return new Date(day * 86400000);
-}
-
 export default function TimelinePage() {
-  const [date, setDate] = useState(isoToday());
-  const [daily, setDaily] = useState<DailyResponse | null>(null);
   const [meds, setMeds] = useState<Med[]>([]);
   const [events, setEvents] = useState<DoseEvent[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [zoom, setZoom] = useState<"day" | "week" | "month">("day");
+  const [expandedYear, setExpandedYear] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
     async function load() {
       try {
-        const [medRes, dailyRes, eventsRes] = await Promise.all([
+        const [medRes, eventsRes] = await Promise.all([
           fetch("/api/meds"),
-          fetch(`/api/daily?date=${date}`),
           fetch("/api/timeline/events"),
         ]);
         const medJson = (await medRes.json()) as { meds: Med[] };
-        const dailyJson = (await dailyRes.json()) as DailyResponse;
         const eventsJson = (await eventsRes.json()) as { events: DoseEvent[] };
         if (active) {
           setMeds(medJson.meds ?? []);
-          setDaily(dailyJson);
           setEvents(eventsJson.events ?? []);
           setStatus("ready");
         }
@@ -102,7 +76,7 @@ export default function TimelinePage() {
     return () => {
       active = false;
     };
-  }, [date]);
+  }, []);
 
   const timeline = useMemo(() => {
     if (!events.length) return null;
@@ -124,6 +98,42 @@ export default function TimelinePage() {
     const dateColumns = rawDates;
     return { min, max, width, padding, points, dateColumns };
   }, [events]);
+
+  const yearTimeline = useMemo(() => {
+    if (!timeline) return null;
+    const yearMap = new Map<number, string[]>();
+    for (const date of timeline.dateColumns) {
+      const year = parseDate(date).getFullYear();
+      if (!yearMap.has(year)) yearMap.set(year, []);
+      yearMap.get(year)!.push(date);
+    }
+    for (const dates of yearMap.values()) {
+      dates.sort((a, b) => normalizeDate(a).localeCompare(normalizeDate(b)));
+    }
+    const years = Array.from(yearMap.keys()).sort((a, b) => a - b);
+    const collapsedWidth = 120;
+    const expandedWidth = (count: number) => Math.max(320, count * 70);
+    const padding = 56;
+
+    const segments = years.map((year) => {
+      const dates = yearMap.get(year)!;
+      const width =
+        expandedYear === year ? expandedWidth(dates.length) : collapsedWidth;
+      return { year, dates, width };
+    });
+
+    const width =
+      padding * 2 + segments.reduce((sum, segment) => sum + segment.width, 0);
+
+    let cursor = padding;
+    const positioned = segments.map((segment) => {
+      const start = cursor;
+      cursor += segment.width;
+      return { ...segment, start };
+    });
+
+    return { padding, width, segments: positioned };
+  }, [timeline, expandedYear]);
 
   const groupedColumns = useMemo(() => {
     if (!timeline) return [];
@@ -184,44 +194,83 @@ export default function TimelinePage() {
           </Link>
           <h1 className="text-3xl font-semibold text-[var(--ink)]">Timeline Explorer</h1>
           <p className="text-sm text-[var(--muted)]">
-            Drag the slider or type a date to see active meds. Scroll to inspect all changes.
+            Click a year to expand its dates. Scroll to inspect all changes.
           </p>
         </header>
 
-        {timeline && (
+        {yearTimeline && (
           <section className="rounded-3xl border border-[var(--line)] bg-[var(--card)] p-6">
             <p className="text-xs font-semibold text-[var(--muted)]">
               Change Events Timeline (scroll left/right)
             </p>
             <div className="mt-3 overflow-x-auto pb-4">
-              <svg width={timeline.width} height={120}>
+              <svg width={yearTimeline.width} height={120}>
                 <line
-                  x1={timeline.padding}
+                  x1={yearTimeline.padding}
                   y1={60}
-                  x2={timeline.width - timeline.padding}
+                  x2={yearTimeline.width - yearTimeline.padding}
                   y2={60}
                   stroke="#eadfcd"
                   strokeWidth={3}
                 />
-                {timeline.points.map(({ event, x }) => (
-                  <g key={event.id}>
-                    <circle cx={x} cy={60} r={7} fill="#0f6b5f">
-                      <title>
-                        {event.effective_date} ·{" "}
-                        {event.total_daily_amount ?? "inactive"} {event.unit}
-                      </title>
-                    </circle>
-                    <text
-                      x={x}
-                      y={30}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fill="#5c574f"
-                    >
-                      {formatShort(event.effective_date)}
-                    </text>
-                  </g>
-                ))}
+                {yearTimeline.segments.map((segment) => {
+                  const center = segment.start + segment.width / 2;
+                  const isExpanded = expandedYear === segment.year;
+                  const innerPadding = 24;
+                  const usable = Math.max(1, segment.width - innerPadding * 2);
+                  const step =
+                    segment.dates.length > 1 ? usable / (segment.dates.length - 1) : 0;
+
+                  return (
+                    <g key={segment.year}>
+                      <g
+                        role="button"
+                        onClick={() =>
+                          setExpandedYear(
+                            expandedYear === segment.year ? null : segment.year,
+                          )
+                        }
+                        style={{ cursor: "pointer" }}
+                      >
+                        <circle
+                          cx={center}
+                          cy={60}
+                          r={10}
+                          fill={isExpanded ? "#0f6b5f" : "#e0d5c3"}
+                        />
+                        <text
+                          x={center}
+                          y={30}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fill="#5c574f"
+                        >
+                          {segment.year}
+                        </text>
+                      </g>
+                      {isExpanded &&
+                        segment.dates.map((date, index) => {
+                          const x = segment.start + innerPadding + step * index;
+                          return (
+                            <g key={date}>
+                              <circle cx={x} cy={60} r={6} fill="#0f6b5f">
+                                <title>{date}</title>
+                              </circle>
+                              <text
+                                x={x}
+                                y={90}
+                                textAnchor="middle"
+                                fontSize="9"
+                                fill="#1b1916"
+                              >
+                                {formatMonthDay(date)}
+                              </text>
+                            </g>
+                          );
+                        })}
+                    </g>
+                  );
+                })}
               </svg>
             </div>
           </section>
