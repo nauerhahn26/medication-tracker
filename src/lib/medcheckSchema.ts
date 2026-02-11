@@ -3,7 +3,7 @@ import { z } from "zod";
 const confidence = z.enum(["high", "medium", "low"]);
 const recognized = z.enum(["yes", "ambiguous", "no"]);
 const qtCategory = z.enum(["KNOWN", "POSSIBLE", "CONDITIONAL", "NONE", "UNKNOWN"]);
-const yesNoUnknown = z.enum(["yes", "no", "unknown"]);
+const yesNoUnknown = z.enum(["yes", "no", "unknown", "possible"]);
 const qtComboRisk = z.enum(["HIGH", "MODERATE", "LOW", "UNCLEAR"]);
 const evidenceSignal = z.enum([
   "WELL_ESTABLISHED",
