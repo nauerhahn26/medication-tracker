@@ -38,14 +38,19 @@ const interaction = z.object({
 });
 
 const deltaInteractionAlt = z.object({
-  type: z.string(),
-  new_item_id: z.string(),
-  existing_item_ids: z.array(z.string()),
-  summary: z.string(),
-  mechanisms: z.array(z.string()),
-  qt_combo_risk: qtComboRisk.optional(),
+  type: z.string().optional(),
+  new_item_id: z.string().optional(),
+  existing_item_ids: z.array(z.string()).optional(),
+  summary: z.string().optional(),
+  mechanisms: z.array(z.string()).optional(),
+  mechanism: z.any().optional(),
+  clinical_concern: z.string().optional(),
+  why_it_matters: z.string().optional(),
   evidence_signal: evidenceSignal.optional(),
-  why_it_matters: z.string(),
+  severity: z.string().optional(),
+  qt_combo_risk: qtComboRisk.optional(),
+  monitoring: z.array(z.string()).optional(),
+  notes: z.string().optional(),
 });
 
 const fingerprint = z.object({
@@ -89,8 +94,11 @@ const monitoringTopic = z.object({
 
 const deltaMonitoringTopicAlt = z.object({
   topic: z.string(),
-  rationale: z.string(),
-  what_to_monitor: z.array(z.string()),
+  rationale: z.string().optional(),
+  why: z.string().optional(),
+  what_to_monitor: z.array(z.string()).optional(),
+  what_to_watch: z.array(z.string()).optional(),
+  who_to_discuss_with: z.string().optional(),
 });
 
 const unknownItem = z.object({
@@ -100,9 +108,11 @@ const unknownItem = z.object({
 });
 
 const deltaUnknownAlt = z.object({
-  item_ids: z.array(z.string()),
-  unknown: z.string(),
-  why_it_matters: z.string(),
+  item_ids: z.array(z.string()).optional(),
+  item_id: z.string().optional(),
+  unknown: z.string().optional(),
+  issue: z.string().optional(),
+  why_it_matters: z.string().optional(),
 });
 
 export const medcheckFullSchema = z.object({

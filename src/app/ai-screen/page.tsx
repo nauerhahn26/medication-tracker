@@ -708,10 +708,10 @@ export default function AiScreenPage() {
                                 <strong>{names}</strong>
                               </div>
                               <div className="mt-2 text-xs text-[var(--muted)]">
-                                {item.what_might_happen ?? item.summary}
+                                {item.what_might_happen ?? item.summary ?? item.clinical_concern}
                               </div>
                               <div className="mt-1 text-xs text-[var(--muted)]">
-                                {item.why ?? item.why_it_matters}
+                                {item.why ?? item.why_it_matters ?? item.notes}
                               </div>
                             </div>
                           );
