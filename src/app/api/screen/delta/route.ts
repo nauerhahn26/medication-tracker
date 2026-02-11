@@ -19,7 +19,6 @@ async function callModel(model: string, systemPrompt: string, userPrompt: string
     model,
     instructions: systemPrompt,
     input: userPrompt,
-    response_format: { type: "json_object" },
   });
   return response.output_text;
 }
