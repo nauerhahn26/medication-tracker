@@ -206,11 +206,14 @@ export default function TimelinePage() {
 
     const column = groupedColumns.find((col) => col.dates.includes(date));
     if (column && sheetScrollRef.current) {
-      const targetHeader = sheetScrollRef.current.querySelector(
+      const container = sheetScrollRef.current;
+      const targetHeader = container.querySelector(
         `[data-col-key="${column.key}"]`,
       );
       if (targetHeader instanceof HTMLElement) {
-        targetHeader.scrollIntoView({ behavior: "smooth", inline: "center" });
+        const target =
+          targetHeader.offsetLeft - container.clientWidth / 2 + targetHeader.offsetWidth / 2;
+        container.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
       }
     }
     setPendingScrollDate(null);
