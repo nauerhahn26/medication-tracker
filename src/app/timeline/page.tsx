@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Med = { id: string; name: string };
 
@@ -52,6 +52,10 @@ export default function TimelinePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [zoom, setZoom] = useState<"day" | "week" | "month">("day");
   const [expandedYear, setExpandedYear] = useState<number | null>(null);
+  const [pendingScrollYear, setPendingScrollYear] = useState<number | null>(null);
+  const [pendingScrollDate, setPendingScrollDate] = useState<string | null>(null);
+  const timelineScrollRef = useRef<HTMLDivElement | null>(null);
+  const sheetScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -170,6 +174,48 @@ export default function TimelinePage() {
     }));
   }, [timeline, zoom]);
 
+  useEffect(() => {
+    if (!pendingScrollYear || !yearTimeline || !timelineScrollRef.current) return;
+    const segment = yearTimeline.segments.find((s) => s.year === pendingScrollYear);
+    if (!segment) return;
+    const center = segment.start + segment.width / 2;
+    const container = timelineScrollRef.current;
+    const target = Math.max(0, center - container.clientWidth / 2);
+    container.scrollTo({ left: target, behavior: "smooth" });
+    setPendingScrollYear(null);
+  }, [pendingScrollYear, yearTimeline]);
+
+  useEffect(() => {
+    if (!pendingScrollDate || !yearTimeline) return;
+    const date = pendingScrollDate;
+    const year = parseDate(date).getFullYear();
+    if (expandedYear !== year) return;
+    const segment = yearTimeline.segments.find((s) => s.year === year);
+    if (!segment) return;
+    const index = segment.dates.findIndex((d) => d === date);
+    if (index < 0) return;
+    const innerPadding = 24;
+    const usable = Math.max(1, segment.width - innerPadding * 2);
+    const step = segment.dates.length > 1 ? usable / (segment.dates.length - 1) : 0;
+    const x = segment.start + innerPadding + step * index;
+    const container = timelineScrollRef.current;
+    if (container) {
+      const target = Math.max(0, x - container.clientWidth / 2);
+      container.scrollTo({ left: target, behavior: "smooth" });
+    }
+
+    const column = groupedColumns.find((col) => col.dates.includes(date));
+    if (column && sheetScrollRef.current) {
+      const targetHeader = sheetScrollRef.current.querySelector(
+        `[data-col-key="${column.key}"]`,
+      );
+      if (targetHeader instanceof HTMLElement) {
+        targetHeader.scrollIntoView({ behavior: "smooth", inline: "center" });
+      }
+    }
+    setPendingScrollDate(null);
+  }, [pendingScrollDate, expandedYear, groupedColumns, yearTimeline]);
+
   const eventsByMed = useMemo(() => {
     const map = new Map<string, DoseEvent[]>();
     for (const event of events) {
@@ -203,7 +249,7 @@ export default function TimelinePage() {
             <p className="text-xs font-semibold text-[var(--muted)]">
               Change Events Timeline (scroll left/right)
             </p>
-            <div className="mt-3 overflow-x-auto pb-4">
+            <div ref={timelineScrollRef} className="mt-3 overflow-x-auto pb-4">
               <svg width={yearTimeline.width} height={120}>
                 <line
                   x1={yearTimeline.padding}
@@ -226,9 +272,13 @@ export default function TimelinePage() {
                       <g
                         role="button"
                         onClick={() =>
-                          setExpandedYear(
-                            expandedYear === segment.year ? null : segment.year,
-                          )
+                          (() => {
+                            const next =
+                              expandedYear === segment.year ? null : segment.year;
+                            setExpandedYear(next);
+                            setPendingScrollYear(segment.year);
+                            setPendingScrollDate(null);
+                          })()
                         }
                         style={{ cursor: "pointer" }}
                       >
@@ -253,7 +303,16 @@ export default function TimelinePage() {
                           const x = segment.start + innerPadding + step * index;
                           return (
                             <g key={date}>
-                              <circle cx={x} cy={60} r={6} fill="#0f6b5f">
+                              <circle
+                                cx={x}
+                                cy={60}
+                                r={6}
+                                fill="#0f6b5f"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setPendingScrollDate(date);
+                                }}
+                              >
                                 <title>{date}</title>
                               </circle>
                               <text
@@ -280,7 +339,7 @@ export default function TimelinePage() {
           <p className="text-xs font-semibold text-[var(--muted)]">
             Sheet View (scroll) · Zoom: {zoom.toUpperCase()}
           </p>
-          <div className="mt-4 overflow-x-auto">
+          <div ref={sheetScrollRef} className="mt-4 overflow-x-auto">
             <table className="min-w-[900px] border-collapse text-xs">
               <thead>
                 <tr className="bg-[var(--background)] text-[var(--muted)]">
@@ -290,6 +349,7 @@ export default function TimelinePage() {
                   {groupedColumns.map((col) => (
                     <th
                       key={col.key}
+                      data-col-key={col.key}
                       className="sticky top-0 bg-[var(--background)] px-3 py-2 text-left"
                     >
                       {col.label}
