@@ -42,6 +42,10 @@ type RegimenItem = {
 
 type FullResponse = {
   disclaimer_short: string;
+  coverage: Array<{
+    id: string;
+    input_name: string;
+  }>;
   interactions: {
     contraindicated_or_urgent_review: unknown[];
     major: unknown[];
@@ -54,6 +58,10 @@ type FullResponse = {
 
 type DeltaResponse = {
   disclaimer_short: string;
+  new_item_fingerprint?: {
+    id: string;
+    name: string;
+  };
   delta_interactions: {
     contraindicated_or_urgent_review: unknown[];
     major: unknown[];
@@ -467,6 +475,94 @@ export default function AiScreenPage() {
             <p className="mt-2 text-xs text-[var(--muted)]">
               {fullResult?.disclaimer_short ?? deltaResult?.disclaimer_short}
             </p>
+            {fullResult && (
+              <div className="mt-4 space-y-4">
+                {(
+                  [
+                    ["Contraindicated / Urgent", "contraindicated_or_urgent_review"],
+                    ["Major", "major"],
+                    ["Moderate", "moderate"],
+                    ["Minor / Theoretical", "minor_or_theoretical"],
+                  ] as const
+                ).map(([label, key]) => {
+                  const list = fullResult.interactions[key] as Array<any>;
+                  if (!list || list.length === 0) return null;
+                  return (
+                    <div key={key} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                        {label}
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        {list.map((item, idx) => {
+                          const names = (item.items ?? []).map((id: string) => {
+                            const hit = fullResult.coverage.find((c) => c.id === id);
+                            return hit?.input_name ?? id;
+                          });
+                          return (
+                            <div key={`${key}-${idx}`} className="rounded-xl border border-[var(--line)] bg-[var(--background)] p-3">
+                              <div className="text-sm font-semibold text-[var(--ink)]">
+                                {names.map((name: string, nIdx: number) => (
+                                  <span key={`${name}-${nIdx}`}>
+                                    <strong>{name}</strong>
+                                    {nIdx < names.length - 1 ? ", " : ""}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="mt-2 text-xs text-[var(--muted)]">
+                                {item.what_might_happen}
+                              </div>
+                              <div className="mt-1 text-xs text-[var(--muted)]">
+                                {item.why}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {deltaResult && (
+              <div className="mt-4 space-y-4">
+                {(
+                  [
+                    ["Contraindicated / Urgent", "contraindicated_or_urgent_review"],
+                    ["Major", "major"],
+                    ["Moderate", "moderate"],
+                    ["Minor / Theoretical", "minor_or_theoretical"],
+                  ] as const
+                ).map(([label, key]) => {
+                  const list = deltaResult.delta_interactions[key] as Array<any>;
+                  if (!list || list.length === 0) return null;
+                  return (
+                    <div key={key} className="rounded-2xl border border-[var(--line)] bg-white p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                        {label}
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        {list.map((item, idx) => {
+                          const names = (item.items ?? []).join(", ");
+                          return (
+                            <div key={`${key}-${idx}`} className="rounded-xl border border-[var(--line)] bg-[var(--background)] p-3">
+                              <div className="text-sm font-semibold text-[var(--ink)]">
+                                <strong>{names}</strong>
+                              </div>
+                              <div className="mt-2 text-xs text-[var(--muted)]">
+                                {item.what_might_happen}
+                              </div>
+                              <div className="mt-1 text-xs text-[var(--muted)]">
+                                {item.why}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {fullResult && (
                 <>
