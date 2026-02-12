@@ -122,7 +122,12 @@ export default function ActiveTodayPanel() {
       }
     }
     load();
+    function handleUpdate() {
+      load();
+    }
+    window.addEventListener("meds:updated", handleUpdate);
     return () => {
+      window.removeEventListener("meds:updated", handleUpdate);
       active = false;
     };
   }, [selectedDate]);

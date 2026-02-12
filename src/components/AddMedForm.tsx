@@ -105,6 +105,7 @@ export default function AddMedForm() {
       setFrequency("");
       setPerDose("");
       setNotes("");
+      window.dispatchEvent(new Event("meds:updated"));
     } catch (err) {
       setStatus("error");
       const message =
