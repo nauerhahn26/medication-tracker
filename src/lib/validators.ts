@@ -8,6 +8,44 @@ export const medSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+export const medInventorySchema = z.object({
+  track_inventory: z.boolean().optional(),
+  current_volume: z
+    .preprocess(
+      (value) => {
+        if (value === null || value === undefined || value === "") return null;
+        if (typeof value === "number") return value;
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed === "") return null;
+          return Number(trimmed);
+        }
+        return value;
+      },
+      z.number().nonnegative().nullable(),
+    )
+    .optional(),
+  volume_unit: z.string().nullable().optional(),
+  alert_days_before_reorder: z
+    .preprocess(
+      (value) => {
+        if (value === null || value === undefined || value === "") return null;
+        if (typeof value === "number") return value;
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed === "") return null;
+          return Number(trimmed);
+        }
+        return value;
+      },
+      z.number().int().positive().nullable(),
+    )
+    .optional(),
+  reorder_location: z.string().nullable().optional(),
+});
+
+export const medUpdateSchema = medSchema.partial().extend(medInventorySchema.shape);
+
 export const medProductSchema = z.object({
   brand_name: z.string().nullable().optional(),
   product_url: z.string().url().nullable().optional(),

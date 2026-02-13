@@ -13,7 +13,30 @@ export async function GET() {
     standard_code: string | null;
     is_supplement: boolean;
     notes: string | null;
-  }>("select * from med where user_id = $1 order by name", [user.id]);
+    track_inventory: boolean;
+    current_volume: number | null;
+    volume_unit: string | null;
+    alert_days_before_reorder: number | null;
+    reorder_location: string | null;
+  }>(
+    `select
+       m.id,
+       m.name,
+       m.standard_code_system,
+       m.standard_code,
+       m.is_supplement,
+       m.notes,
+       coalesce(mi.track_inventory, false) as track_inventory,
+       mi.current_volume,
+       mi.volume_unit,
+       coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+       mi.reorder_location
+     from med m
+     left join med_inventory mi on mi.med_id = m.id
+     where m.user_id = $1
+     order by m.name`,
+    [user.id],
+  );
 
   return NextResponse.json({ meds });
 }

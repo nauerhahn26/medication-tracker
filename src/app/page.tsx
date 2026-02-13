@@ -1,6 +1,7 @@
 import ActiveTodayPanel from "@/components/ActiveTodayPanel";
 import AddMedForm from "@/components/AddMedForm";
 import ImportPanel from "@/components/ImportPanel";
+import InventoryAlertsPanel from "@/components/InventoryAlertsPanel";
 
 export default function Home() {
   return (
@@ -45,6 +46,8 @@ export default function Home() {
             <AddMedForm />
           </div>
         </header>
+
+        <InventoryAlertsPanel />
 
         <ActiveTodayPanel />
 
