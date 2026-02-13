@@ -65,10 +65,6 @@ type InventoryStatus = {
   reorder_location: string | null;
 };
 
-type InventoryResponse = {
-  items: InventoryStatus[];
-};
-
 function formatDate(value: string) {
   return value ? value.slice(0, 10) : value;
 }
@@ -170,8 +166,14 @@ export default function MedDetailPage() {
     const eventsRes = await fetch(`/api/meds/${medId}/dose-events`, {
       cache: "no-store",
     });
-    const eventsJson = (await eventsRes.json()) as { events: DoseEvent[] };
-    setEvents(trimLeadingInactive(eventsJson.events));
+    if (!eventsRes.ok) {
+      setEvents([]);
+      return;
+    }
+    const eventsJson = (await eventsRes
+      .json()
+      .catch(() => ({ events: [] }))) as { events?: DoseEvent[] };
+    setEvents(trimLeadingInactive(eventsJson.events ?? []));
   }
 
   async function refreshInventoryStatus() {
@@ -180,8 +182,14 @@ export default function MedDetailPage() {
       `/api/med-inventory?medId=${encodeURIComponent(medId)}`,
       { cache: "no-store" },
     );
-    const statusJson = (await statusRes.json()) as InventoryResponse;
-    const next = statusJson.items.find((item) => item.med_id === medId) ?? null;
+    if (!statusRes.ok) {
+      setInventoryStatus(null);
+      return;
+    }
+    const statusJson = (await statusRes
+      .json()
+      .catch(() => ({ items: [] }))) as { items?: InventoryStatus[] };
+    const next = (statusJson.items ?? []).find((item) => item.med_id === medId) ?? null;
     setInventoryStatus(next);
   }
 
@@ -375,17 +383,32 @@ export default function MedDetailPage() {
             cache: "no-store",
           }),
         ]);
-        const medJson = (await medRes.json()) as { med: Med; error?: string };
-        const eventsJson = (await eventsRes.json()) as { events: DoseEvent[] };
-        const inventoryJson = (await inventoryRes.json()) as InventoryResponse;
+        const medJson = (await medRes
+          .json()
+          .catch(() => ({ error: "Failed to load medication." }))) as {
+          med?: Med;
+          error?: string;
+        };
+        const eventsJson = eventsRes.ok
+          ? ((await eventsRes.json().catch(() => ({ events: [] }))) as {
+              events?: DoseEvent[];
+            })
+          : { events: [] };
+        const inventoryJson = inventoryRes.ok
+          ? ((await inventoryRes.json().catch(() => ({ items: [] }))) as {
+              items?: InventoryStatus[];
+            })
+          : { items: [] };
         if (!medRes.ok) throw new Error(medJson.error ?? "Failed");
 
         if (active) {
-          setMed(medJson.med);
-          setEvents(trimLeadingInactive(eventsJson.events));
-          loadInventoryDraft(medJson.med);
+          const nextMed = medJson.med;
+          if (!nextMed) throw new Error("Unable to load medication.");
+          setMed(nextMed);
+          setEvents(trimLeadingInactive(eventsJson.events ?? []));
+          loadInventoryDraft(nextMed);
           setInventoryStatus(
-            inventoryJson.items.find((item) => item.med_id === medId) ?? null,
+            (inventoryJson.items ?? []).find((item) => item.med_id === medId) ?? null,
           );
           setStatus("ready");
         }

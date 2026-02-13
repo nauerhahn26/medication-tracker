@@ -92,7 +92,46 @@ export async function GET(request: Request) {
   const query = medId ? `${baseQuery} and m.id = $2` : baseQuery;
   if (medId) params.push(medId);
 
-  const rows = await dbQuery<InventoryQueryRow>(query, params);
+  let rows: InventoryQueryRow[];
+  try {
+    rows = await dbQuery<InventoryQueryRow>(query, params);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+    const inventorySchemaMismatch =
+      code === "42P01" ||
+      code === "42703" ||
+      message.includes('relation "med_inventory" does not exist') ||
+      message.includes('column "user_id" does not exist');
+    if (!inventorySchemaMismatch) throw error;
+
+    const fallbackBaseQuery = `select
+      m.id as med_id,
+      m.name as med_name,
+      false as track_inventory,
+      null::numeric as current_volume,
+      null::text as volume_unit,
+      7 as alert_days_before_reorder,
+      null::text as reorder_location,
+      de.total_daily_amount,
+      de.unit as dose_unit,
+      de.effective_date
+    from med m
+    left join lateral (
+      select total_daily_amount, unit, effective_date
+      from dose_event
+      where med_id = m.id
+        and effective_date <= current_date
+      order by effective_date desc
+      limit 1
+    ) de on true
+    where m.user_id = $1`;
+    const fallbackQuery = medId ? `${fallbackBaseQuery} and m.id = $2` : fallbackBaseQuery;
+    rows = await dbQuery<InventoryQueryRow>(fallbackQuery, params);
+  }
 
   const items: InventoryItem[] = rows.map((row) => {
     const trackInventory = row.track_inventory;
