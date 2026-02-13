@@ -30,32 +30,70 @@ type MedRecord = {
 };
 
 async function getMed(userId: string, medId: string) {
-  const rows = await dbQuery<MedRecord>(
-    `select
-       m.id,
-       m.name,
-       m.standard_code_system,
-       m.standard_code,
-       m.is_supplement,
-       m.notes,
-       m.med_type,
-       m.target,
-       m.delivery_mechanism,
-       m.result,
-       m.source,
-       m.dose_at_13kg,
-       m.brand,
-       m.supporting_research,
-       coalesce(mi.track_inventory, false) as track_inventory,
-       mi.current_volume,
-       mi.volume_unit,
-       coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
-       mi.reorder_location
-     from med m
-     left join med_inventory mi on mi.med_id = m.id
-     where m.id = $1 and m.user_id = $2`,
-    [medId, userId],
-  );
+  let rows: MedRecord[];
+  try {
+    rows = await dbQuery<MedRecord>(
+      `select
+         m.id,
+         m.name,
+         m.standard_code_system,
+         m.standard_code,
+         m.is_supplement,
+         m.notes,
+         m.med_type,
+         m.target,
+         m.delivery_mechanism,
+         m.result,
+         m.source,
+         m.dose_at_13kg,
+         m.brand,
+         m.supporting_research,
+         coalesce(mi.track_inventory, false) as track_inventory,
+         mi.current_volume,
+         mi.volume_unit,
+         coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+         mi.reorder_location
+       from med m
+       left join med_inventory mi on mi.med_id = m.id
+       where m.id = $1 and m.user_id = $2`,
+      [medId, userId],
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+    const missingInventoryTable =
+      code === "42P01" || message.includes('relation "med_inventory" does not exist');
+    if (!missingInventoryTable) throw error;
+
+    rows = await dbQuery<MedRecord>(
+      `select
+         m.id,
+         m.name,
+         m.standard_code_system,
+         m.standard_code,
+         m.is_supplement,
+         m.notes,
+         m.med_type,
+         m.target,
+         m.delivery_mechanism,
+         m.result,
+         m.source,
+         m.dose_at_13kg,
+         m.brand,
+         m.supporting_research,
+         false as track_inventory,
+         null::numeric as current_volume,
+         null::text as volume_unit,
+         7 as alert_days_before_reorder,
+         null::text as reorder_location
+       from med m
+       where m.id = $1 and m.user_id = $2`,
+      [medId, userId],
+    );
+  }
   return rows[0];
 }
 

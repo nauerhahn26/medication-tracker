@@ -6,7 +6,7 @@ import { medSchema } from "@/lib/validators";
 export async function GET() {
   const { user, response } = await requireUser();
   if (!user) return response!;
-  const meds = await dbQuery<{
+  let meds: Array<{
     id: string;
     name: string;
     standard_code_system: string | null;
@@ -18,25 +18,57 @@ export async function GET() {
     volume_unit: string | null;
     alert_days_before_reorder: number | null;
     reorder_location: string | null;
-  }>(
-    `select
-       m.id,
-       m.name,
-       m.standard_code_system,
-       m.standard_code,
-       m.is_supplement,
-       m.notes,
-       coalesce(mi.track_inventory, false) as track_inventory,
-       mi.current_volume,
-       mi.volume_unit,
-       coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
-       mi.reorder_location
-     from med m
-     left join med_inventory mi on mi.med_id = m.id
-     where m.user_id = $1
-     order by m.name`,
-    [user.id],
-  );
+  }>;
+
+  try {
+    meds = await dbQuery(
+      `select
+         m.id,
+         m.name,
+         m.standard_code_system,
+         m.standard_code,
+         m.is_supplement,
+         m.notes,
+         coalesce(mi.track_inventory, false) as track_inventory,
+         mi.current_volume,
+         mi.volume_unit,
+         coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+         mi.reorder_location
+       from med m
+       left join med_inventory mi on mi.med_id = m.id
+       where m.user_id = $1
+       order by m.name`,
+      [user.id],
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+    const missingInventoryTable =
+      code === "42P01" || message.includes('relation "med_inventory" does not exist');
+    if (!missingInventoryTable) throw error;
+
+    meds = await dbQuery(
+      `select
+         m.id,
+         m.name,
+         m.standard_code_system,
+         m.standard_code,
+         m.is_supplement,
+         m.notes,
+         false as track_inventory,
+         null::numeric as current_volume,
+         null::text as volume_unit,
+         7 as alert_days_before_reorder,
+         null::text as reorder_location
+       from med m
+       where m.user_id = $1
+       order by m.name`,
+      [user.id],
+    );
+  }
 
   return NextResponse.json({ meds });
 }
