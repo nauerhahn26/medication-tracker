@@ -29,6 +29,15 @@ type MedRecord = {
   reorder_location: string | null;
 };
 
+function parsePgError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  return { code, message };
+}
+
 async function getMed(userId: string, medId: string) {
   let rows: MedRecord[];
   try {
@@ -214,33 +223,95 @@ export async function PATCH(request: Request, { params }: Params) {
       payload.reorder_location === undefined
         ? med.reorder_location
         : payload.reorder_location;
-    await dbQuery(
-      `insert into med_inventory (
-         med_id,
-         user_id,
-         track_inventory,
-         current_volume,
-         volume_unit,
-         alert_days_before_reorder,
-         reorder_location
-       ) values ($1, $2, $3, $4, $5, $6, $7)
-       on conflict (med_id) do update set
-         track_inventory = $3,
-         current_volume = $4,
-         volume_unit = $5,
-         alert_days_before_reorder = $6,
-         reorder_location = $7,
-         updated_at = now()`,
-      [
-        medId,
-        user.id,
-        nextTrackInventory,
-        nextCurrentVolume,
-        nextVolumeUnit,
-        nextAlertDays,
-        nextReorderLocation,
-      ],
-    );
+    const upsertWithUserId = () =>
+      dbQuery(
+        `insert into med_inventory (
+           med_id,
+           user_id,
+           track_inventory,
+           current_volume,
+           volume_unit,
+           alert_days_before_reorder,
+           reorder_location
+         ) values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (med_id) do update set
+           user_id = excluded.user_id,
+           track_inventory = excluded.track_inventory,
+           current_volume = excluded.current_volume,
+           volume_unit = excluded.volume_unit,
+           alert_days_before_reorder = excluded.alert_days_before_reorder,
+           reorder_location = excluded.reorder_location,
+           updated_at = now()`,
+        [
+          medId,
+          user.id,
+          nextTrackInventory,
+          nextCurrentVolume,
+          nextVolumeUnit,
+          nextAlertDays,
+          nextReorderLocation,
+        ],
+      );
+
+    const upsertWithoutUserId = () =>
+      dbQuery(
+        `insert into med_inventory (
+           med_id,
+           track_inventory,
+           current_volume,
+           volume_unit,
+           alert_days_before_reorder,
+           reorder_location
+         ) values ($1, $2, $3, $4, $5, $6)
+         on conflict (med_id) do update set
+           track_inventory = excluded.track_inventory,
+           current_volume = excluded.current_volume,
+           volume_unit = excluded.volume_unit,
+           alert_days_before_reorder = excluded.alert_days_before_reorder,
+           reorder_location = excluded.reorder_location,
+           updated_at = now()`,
+        [
+          medId,
+          nextTrackInventory,
+          nextCurrentVolume,
+          nextVolumeUnit,
+          nextAlertDays,
+          nextReorderLocation,
+        ],
+      );
+
+    try {
+      await upsertWithUserId();
+    } catch (error) {
+      const first = parsePgError(error);
+      const missingInventoryTable =
+        first.code === "42P01" ||
+        first.message.includes('relation "med_inventory" does not exist');
+      const missingInventoryUserId =
+        first.code === "42703" ||
+        first.message.includes('column "user_id" of relation "med_inventory" does not exist');
+
+      if (missingInventoryTable) {
+        await dbQuery(
+          `create table if not exists med_inventory (
+             med_id uuid primary key references med(id) on delete cascade,
+             user_id uuid,
+             track_inventory boolean not null default false,
+             current_volume numeric,
+             volume_unit text,
+             alert_days_before_reorder integer not null default 7,
+             reorder_location text,
+             updated_at timestamptz default now(),
+             check (alert_days_before_reorder > 0)
+           )`,
+        );
+        await upsertWithUserId();
+      } else if (missingInventoryUserId) {
+        await upsertWithoutUserId();
+      } else {
+        throw error;
+      }
+    }
   }
 
   const updated = await getMed(user.id, medId);
