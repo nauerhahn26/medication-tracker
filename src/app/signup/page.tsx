@@ -15,6 +15,11 @@ export default function SignupPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!supabase) {
+      setStatus("error");
+      setErrorMessage("Authentication configuration is unavailable.");
+      return;
+    }
     setStatus("loading");
     setErrorMessage(null);
     const siteUrl =
@@ -63,9 +68,15 @@ export default function SignupPage() {
           <button
             type="submit"
             className="mt-4 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+            disabled={!supabase}
           >
             Create account
           </button>
+          {!supabase && (
+            <p className="mt-2 text-xs text-amber-600">
+              Authentication is unavailable because client-side env vars are not set.
+            </p>
+          )}
           {status === "done" && (
             <p className="mt-3 text-xs text-[var(--muted)]">
               Check your email to confirm your account.

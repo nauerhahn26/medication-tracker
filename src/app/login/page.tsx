@@ -15,6 +15,10 @@ export default function LoginPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!supabase) {
+      setStatus("error");
+      return;
+    }
     setStatus("loading");
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -28,6 +32,10 @@ export default function LoginPage() {
   }
 
   async function handleResend() {
+    if (!supabase) {
+      setResendStatus("error");
+      return;
+    }
     if (!email) return;
     setResendStatus("sending");
     const siteUrl =
@@ -75,9 +83,15 @@ export default function LoginPage() {
           <button
             type="submit"
             className="mt-4 w-full rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white"
+            disabled={!supabase}
           >
             Sign in
           </button>
+          {!supabase && (
+            <p className="mt-2 text-xs text-amber-600">
+              Authentication is unavailable because client-side env vars are not set.
+            </p>
+          )}
           {status === "error" && (
             <p className="mt-3 text-xs text-red-600">
               Invalid credentials or account not confirmed.
@@ -95,6 +109,7 @@ export default function LoginPage() {
             onClick={handleResend}
             className="mt-3 rounded-full border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--ink)]"
             type="button"
+            disabled={!supabase}
           >
             Resend confirmation
           </button>
