@@ -1,5 +1,31 @@
 This is a [Next.js](https://nextjs.org) project for a medication timeline tracker.
 
+## Project Summary
+
+Goal: Build a caregiver-friendly medication tracker for a child with Rett syndrome that keeps a precise, day-by-day history of all meds and supplements, supports starts/stops/dose changes, and makes it easy to review past regimens, share current lists, and run AI interaction screens safely.
+
+What we’ve built and are building toward:
+1. Web app (Next.js) with Supabase auth and Postgres storage.
+2. Medication model that tracks dose changes over time rather than re-adding meds.
+3. CSV change-log import with review before saving.
+4. Accurate “active on date” computation with day-level history.
+5. Medication list and detail views with timelines.
+6. Ability to add, update, and delete dose events.
+7. Ability to rename meds and capture metadata (brand, notes, research, etc.).
+8. RxNorm autocomplete for meds with free-text fallback for supplements.
+9. Unit support for mg, IU, mL, packet, drops (more as needed).
+10. Active meds table with date selector for any day.
+11. Export current meds list as CSV and PDF.
+12. Timeline explorer with expandable year bands and date navigation.
+13. AI Drug-to-Drug Analysis (FULL + DELTA) with prompts stored verbatim.
+14. Patient context storage for AI screens.
+15. Saved AI runs with history browsing and latest-result persistence.
+16. Guardrails and disclaimers for AI output (educational only).
+17. Ongoing work to normalize AI outputs and render readable summaries.
+18. Future AI modules planned (e.g., dose sanity check vs standards).
+19. Product-friendly UX direction (shareable, caregiver-first, low friction).
+20. Eventual multi-user, paid subscription-ready architecture.
+
 ## Getting Started
 
 First, run the development server:
