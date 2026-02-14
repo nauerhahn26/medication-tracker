@@ -77,7 +77,7 @@ async function getMed(userId: string, medId: string) {
         : "";
     const inventorySchemaMismatch =
       code === "42P01" ||
-      (code === "42703" && message.includes('column "amount_per_bottle" does not exist')) ||
+      (code === "42703" && message.includes("amount_per_bottle")) ||
       message.includes('relation "med_inventory" does not exist');
     if (!inventorySchemaMismatch) throw error;
 
