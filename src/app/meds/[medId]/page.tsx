@@ -133,6 +133,20 @@ export default function MedDetailPage() {
     alert_days_before_reorder: "7",
     reorder_location: "",
   });
+  const [inventoryInputMode, setInventoryInputMode] = useState<
+    "manual" | "pill_pack" | "liquid_pack"
+  >("manual");
+  const [pillCalcDraft, setPillCalcDraft] = useState({
+    full_bottles: "",
+    pills_per_bottle: "",
+    loose_pills: "",
+    strength_per_pill: "",
+  });
+  const [liquidCalcDraft, setLiquidCalcDraft] = useState({
+    full_bottles: "",
+    volume_per_bottle: "",
+    partial_bottle_volume: "",
+  });
   const [showReorderForm, setShowReorderForm] = useState(false);
   const [reorderDraft, setReorderDraft] = useState({ volume: "", unit: "mg" });
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -159,7 +173,54 @@ export default function MedDetailPage() {
       volume: "",
       unit: nextMed.volume_unit ?? "mg",
     });
+    setInventoryInputMode("manual");
   }
+
+  function parseNonNegative(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const next = Number(trimmed);
+    if (!Number.isFinite(next) || next < 0) return null;
+    return next;
+  }
+
+  const inventoryCalculatedStock = useMemo(() => {
+    if (inventoryInputMode === "manual") {
+      return { value: null, error: null as string | null };
+    }
+
+    if (inventoryInputMode === "pill_pack") {
+      const fullBottles = parseNonNegative(pillCalcDraft.full_bottles) ?? 0;
+      const pillsPerBottle = parseNonNegative(pillCalcDraft.pills_per_bottle);
+      const loosePills = parseNonNegative(pillCalcDraft.loose_pills) ?? 0;
+      const strengthPerPill = parseNonNegative(pillCalcDraft.strength_per_pill);
+
+      if (pillsPerBottle === null || strengthPerPill === null) {
+        return {
+          value: null,
+          error: "Enter pills per bottle and strength per pill.",
+        };
+      }
+
+      const totalPills = fullBottles * pillsPerBottle + loosePills;
+      return {
+        value: Number((totalPills * strengthPerPill).toFixed(2)),
+        error: null,
+      };
+    }
+
+    const fullBottles = parseNonNegative(liquidCalcDraft.full_bottles) ?? 0;
+    const volumePerBottle = parseNonNegative(liquidCalcDraft.volume_per_bottle);
+    const partialBottle = parseNonNegative(liquidCalcDraft.partial_bottle_volume) ?? 0;
+    if (volumePerBottle === null) {
+      return { value: null, error: "Enter volume per bottle." };
+    }
+
+    return {
+      value: Number((fullBottles * volumePerBottle + partialBottle).toFixed(2)),
+      error: null,
+    };
+  }, [inventoryInputMode, liquidCalcDraft, pillCalcDraft]);
 
   async function refreshEvents() {
     if (!medId) return;
@@ -602,6 +663,177 @@ export default function MedDetailPage() {
                   />
                   Enable reorder tracking for this med
                 </label>
+                <div className="grid gap-2 rounded-2xl border border-[var(--line)] bg-white p-3">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                    Stock Input Mode
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInventoryInputMode("manual")}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        inventoryInputMode === "manual"
+                          ? "bg-[var(--accent)] text-white"
+                          : "border border-[var(--line)] text-[var(--ink)]"
+                      }`}
+                    >
+                      Manual stock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInventoryInputMode("pill_pack")}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        inventoryInputMode === "pill_pack"
+                          ? "bg-[var(--accent)] text-white"
+                          : "border border-[var(--line)] text-[var(--ink)]"
+                      }`}
+                    >
+                      Bottles + pills
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInventoryInputMode("liquid_pack")}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        inventoryInputMode === "liquid_pack"
+                          ? "bg-[var(--accent)] text-white"
+                          : "border border-[var(--line)] text-[var(--ink)]"
+                      }`}
+                    >
+                      Multi-bottle liquid
+                    </button>
+                  </div>
+                  {inventoryInputMode === "pill_pack" && (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Full bottles on hand"
+                        value={pillCalcDraft.full_bottles}
+                        onChange={(event) =>
+                          setPillCalcDraft({
+                            ...pillCalcDraft,
+                            full_bottles: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Pills per bottle"
+                        value={pillCalcDraft.pills_per_bottle}
+                        onChange={(event) =>
+                          setPillCalcDraft({
+                            ...pillCalcDraft,
+                            pills_per_bottle: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Loose / partial-bottle pills"
+                        value={pillCalcDraft.loose_pills}
+                        onChange={(event) =>
+                          setPillCalcDraft({
+                            ...pillCalcDraft,
+                            loose_pills: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={`Strength per pill (${inventoryDraft.volume_unit})`}
+                        value={pillCalcDraft.strength_per_pill}
+                        onChange={(event) =>
+                          setPillCalcDraft({
+                            ...pillCalcDraft,
+                            strength_per_pill: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                    </div>
+                  )}
+                  {inventoryInputMode === "liquid_pack" && (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Full bottles on hand"
+                        value={liquidCalcDraft.full_bottles}
+                        onChange={(event) =>
+                          setLiquidCalcDraft({
+                            ...liquidCalcDraft,
+                            full_bottles: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={`Volume per bottle (${inventoryDraft.volume_unit})`}
+                        value={liquidCalcDraft.volume_per_bottle}
+                        onChange={(event) =>
+                          setLiquidCalcDraft({
+                            ...liquidCalcDraft,
+                            volume_per_bottle: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={`Partial bottle amount (${inventoryDraft.volume_unit})`}
+                        value={liquidCalcDraft.partial_bottle_volume}
+                        onChange={(event) =>
+                          setLiquidCalcDraft({
+                            ...liquidCalcDraft,
+                            partial_bottle_volume: event.target.value,
+                          })
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 md:col-span-2"
+                      />
+                    </div>
+                  )}
+                  {inventoryInputMode !== "manual" && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (inventoryCalculatedStock.value === null) return;
+                          setInventoryDraft({
+                            ...inventoryDraft,
+                            current_volume: String(inventoryCalculatedStock.value),
+                          });
+                          setError(null);
+                        }}
+                        className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--ink)]"
+                      >
+                        Use calculated stock
+                      </button>
+                      <span className="text-xs text-[var(--muted)]">
+                        {inventoryCalculatedStock.error
+                          ? inventoryCalculatedStock.error
+                          : `Calculated stock: ${
+                              inventoryCalculatedStock.value ?? "—"
+                            } ${inventoryDraft.volume_unit}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <input
                     type="number"
