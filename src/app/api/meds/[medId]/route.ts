@@ -27,6 +27,7 @@ type MedRecord = {
   volume_unit: string | null;
   alert_days_before_reorder: number | null;
   reorder_location: string | null;
+  amount_per_bottle: number | null;
 };
 
 function parsePgError(error: unknown) {
@@ -61,7 +62,8 @@ async function getMed(userId: string, medId: string) {
          mi.current_volume,
          mi.volume_unit,
          coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
-         mi.reorder_location
+         mi.reorder_location,
+         mi.amount_per_bottle
        from med m
        left join med_inventory mi on mi.med_id = m.id
        where m.id = $1 and m.user_id = $2`,
@@ -73,9 +75,11 @@ async function getMed(userId: string, medId: string) {
       typeof error === "object" && error !== null && "code" in error
         ? String((error as { code?: unknown }).code)
         : "";
-    const missingInventoryTable =
-      code === "42P01" || message.includes('relation "med_inventory" does not exist');
-    if (!missingInventoryTable) throw error;
+    const inventorySchemaMismatch =
+      code === "42P01" ||
+      (code === "42703" && message.includes('column "amount_per_bottle" does not exist')) ||
+      message.includes('relation "med_inventory" does not exist');
+    if (!inventorySchemaMismatch) throw error;
 
     rows = await dbQuery<MedRecord>(
       `select
@@ -97,7 +101,8 @@ async function getMed(userId: string, medId: string) {
          null::numeric as current_volume,
          null::text as volume_unit,
          7 as alert_days_before_reorder,
-         null::text as reorder_location
+         null::text as reorder_location,
+         null::numeric as amount_per_bottle
        from med m
        where m.id = $1 and m.user_id = $2`,
       [medId, userId],
@@ -144,7 +149,8 @@ export async function PATCH(request: Request, { params }: Params) {
     payload.current_volume !== undefined ||
     payload.volume_unit !== undefined ||
     payload.alert_days_before_reorder !== undefined ||
-    payload.reorder_location !== undefined;
+    payload.reorder_location !== undefined ||
+    payload.amount_per_bottle !== undefined;
 
   if (!hasAnyUpdate) {
     return NextResponse.json({ error: "No update fields provided." }, { status: 400 });
@@ -205,7 +211,8 @@ export async function PATCH(request: Request, { params }: Params) {
     payload.current_volume !== undefined ||
     payload.volume_unit !== undefined ||
     payload.alert_days_before_reorder !== undefined ||
-    payload.reorder_location !== undefined
+    payload.reorder_location !== undefined ||
+    payload.amount_per_bottle !== undefined
   ) {
     const nextTrackInventory =
       payload.track_inventory === undefined
@@ -223,6 +230,10 @@ export async function PATCH(request: Request, { params }: Params) {
       payload.reorder_location === undefined
         ? med.reorder_location
         : payload.reorder_location;
+    const nextAmountPerBottle =
+      payload.amount_per_bottle === undefined
+        ? med.amount_per_bottle
+        : payload.amount_per_bottle;
     const upsertWithUserId = () =>
       dbQuery(
         `insert into med_inventory (
@@ -232,8 +243,9 @@ export async function PATCH(request: Request, { params }: Params) {
            current_volume,
            volume_unit,
            alert_days_before_reorder,
-           reorder_location
-         ) values ($1, $2, $3, $4, $5, $6, $7)
+           reorder_location,
+           amount_per_bottle
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8)
          on conflict (med_id) do update set
            user_id = excluded.user_id,
            track_inventory = excluded.track_inventory,
@@ -241,6 +253,7 @@ export async function PATCH(request: Request, { params }: Params) {
            volume_unit = excluded.volume_unit,
            alert_days_before_reorder = excluded.alert_days_before_reorder,
            reorder_location = excluded.reorder_location,
+           amount_per_bottle = excluded.amount_per_bottle,
            updated_at = now()`,
         [
           medId,
@@ -250,6 +263,7 @@ export async function PATCH(request: Request, { params }: Params) {
           nextVolumeUnit,
           nextAlertDays,
           nextReorderLocation,
+          nextAmountPerBottle,
         ],
       );
 
@@ -261,14 +275,16 @@ export async function PATCH(request: Request, { params }: Params) {
            current_volume,
            volume_unit,
            alert_days_before_reorder,
-           reorder_location
-         ) values ($1, $2, $3, $4, $5, $6)
+           reorder_location,
+           amount_per_bottle
+         ) values ($1, $2, $3, $4, $5, $6, $7)
          on conflict (med_id) do update set
            track_inventory = excluded.track_inventory,
            current_volume = excluded.current_volume,
            volume_unit = excluded.volume_unit,
            alert_days_before_reorder = excluded.alert_days_before_reorder,
            reorder_location = excluded.reorder_location,
+           amount_per_bottle = excluded.amount_per_bottle,
            updated_at = now()`,
         [
           medId,
@@ -277,6 +293,7 @@ export async function PATCH(request: Request, { params }: Params) {
           nextVolumeUnit,
           nextAlertDays,
           nextReorderLocation,
+          nextAmountPerBottle,
         ],
       );
 
@@ -301,13 +318,21 @@ export async function PATCH(request: Request, { params }: Params) {
              volume_unit text,
              alert_days_before_reorder integer not null default 7,
              reorder_location text,
+             amount_per_bottle numeric,
              updated_at timestamptz default now(),
              check (alert_days_before_reorder > 0)
            )`,
         );
         await upsertWithUserId();
       } else if (missingInventoryUserId) {
+        await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
         await upsertWithoutUserId();
+      } else if (
+        first.code === "42703" &&
+        first.message.includes('column "amount_per_bottle" of relation "med_inventory" does not exist')
+      ) {
+        await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
+        await upsertWithUserId();
       } else {
         throw error;
       }

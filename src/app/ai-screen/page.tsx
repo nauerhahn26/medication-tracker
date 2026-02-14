@@ -73,6 +73,26 @@ type DeltaResponse = {
   questions_for_clinician: string[];
 };
 
+type SavedRun = {
+  id: string;
+  mode: "full" | "delta";
+  model: string;
+  created_at: string;
+  response: FullResponse | DeltaResponse;
+};
+
+type InteractionItem = {
+  items?: string[];
+  existing_item_ids?: string[];
+  new_item_id?: string;
+  what_might_happen?: string;
+  why?: string;
+  summary?: string;
+  clinical_concern?: string;
+  why_it_matters?: string;
+  notes?: string;
+};
+
 const defaultContext: PatientContext = {
   age_years: null,
   weight_kg: null,
@@ -115,9 +135,7 @@ export default function AiScreenPage() {
   );
   const [fullResult, setFullResult] = useState<FullResponse | null>(null);
   const [deltaResult, setDeltaResult] = useState<DeltaResponse | null>(null);
-  const [savedRuns, setSavedRuns] = useState<
-    Array<{ id: string; mode: "full" | "delta"; model: string; created_at: string; response: any }>
-  >([]);
+  const [savedRuns, setSavedRuns] = useState<SavedRun[]>([]);
   const [activeTab, setActiveTab] = useState<"latest" | "history">("latest");
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [deltaStatus, setDeltaStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -177,7 +195,7 @@ export default function AiScreenPage() {
     async function loadHistory() {
       const res = await fetch("/api/screen/history");
       const json = (await res.json()) as {
-        runs: Array<{ id: string; mode: "full" | "delta"; model: string; created_at: string; response: any }>;
+        runs: SavedRun[];
       };
       if (active) setSavedRuns(json.runs ?? []);
     }
@@ -638,7 +656,7 @@ export default function AiScreenPage() {
                     ["Minor / Theoretical", "minor_or_theoretical"],
                   ] as const
                 ).map(([label, key]) => {
-                  const list = fullResult.interactions[key] as Array<any>;
+                  const list = fullResult.interactions[key] as InteractionItem[];
                   if (!list || list.length === 0) return null;
                   return (
                     <div key={key} className="rounded-2xl border border-[var(--line)] bg-white p-4">
@@ -686,7 +704,7 @@ export default function AiScreenPage() {
                     ["Minor / Theoretical", "minor_or_theoretical"],
                   ] as const
                 ).map(([label, key]) => {
-                  const list = deltaResult.delta_interactions[key] as Array<any>;
+                  const list = deltaResult.delta_interactions[key] as InteractionItem[];
                   if (!list || list.length === 0) return null;
                   return (
                     <div key={key} className="rounded-2xl border border-[var(--line)] bg-white p-4">

@@ -42,6 +42,21 @@ export const medInventorySchema = z.object({
     )
     .optional(),
   reorder_location: z.string().nullable().optional(),
+  amount_per_bottle: z
+    .preprocess(
+      (value) => {
+        if (value === null || value === undefined || value === "") return null;
+        if (typeof value === "number") return value;
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed === "") return null;
+          return Number(trimmed);
+        }
+        return value;
+      },
+      z.number().nonnegative().nullable(),
+    )
+    .optional(),
 });
 
 export const medUpdateSchema = medSchema.partial().extend(medInventorySchema.shape);

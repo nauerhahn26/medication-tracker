@@ -113,7 +113,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 This repo now includes `.github/workflows/vercel-deploy.yml` so feature work can be deployed automatically:
 
-- Pull Requests to `main` get a Vercel preview deployment.
+- Every branch push gets a Vercel preview deployment URL.
 - Pushes to `main` get a production deployment.
 - `npm run build` is run in CI before deployment to fail fast.
 
@@ -127,3 +127,18 @@ Get IDs from your Vercel project settings, then add each secret in GitHub under:
 `Settings -> Secrets and variables -> Actions`.
 
 After this is in place, any new Codex session opening the repo can rely on the same workflow for auto-deploy.
+
+### Preview DB access
+
+To make branch previews read/write real data, set Vercel **Preview** environment variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY`
+
+Recommended setup:
+
+- Use a staging Supabase project for **Preview**.
+- Use your production Supabase project for **Production**.
+- Run migrations (including `db/migrations/007_add_amount_per_bottle.sql`) in both environments.

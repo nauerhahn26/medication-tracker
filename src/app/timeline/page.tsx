@@ -49,8 +49,7 @@ function formatWeek(value: string) {
 export default function TimelinePage() {
   const [meds, setMeds] = useState<Med[]>([]);
   const [events, setEvents] = useState<DoseEvent[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [zoom, setZoom] = useState<"day" | "week" | "month">("day");
+  const [zoom] = useState<"day" | "week" | "month">("day");
   const [expandedYear, setExpandedYear] = useState<number | null>(null);
   const [pendingScrollYear, setPendingScrollYear] = useState<number | null>(null);
   const [pendingScrollDate, setPendingScrollDate] = useState<string | null>(null);
@@ -70,10 +69,12 @@ export default function TimelinePage() {
         if (active) {
           setMeds(medJson.meds ?? []);
           setEvents(eventsJson.events ?? []);
-          setStatus("ready");
         }
       } catch {
-        if (active) setStatus("error");
+        if (active) {
+          setMeds([]);
+          setEvents([]);
+        }
       }
     }
     load();
@@ -182,7 +183,7 @@ export default function TimelinePage() {
     const container = timelineScrollRef.current;
     const target = Math.max(0, center - container.clientWidth / 2);
     container.scrollTo({ left: target, behavior: "smooth" });
-    setPendingScrollYear(null);
+    setTimeout(() => setPendingScrollYear(null), 0);
   }, [pendingScrollYear, yearTimeline]);
 
   useEffect(() => {
@@ -216,7 +217,7 @@ export default function TimelinePage() {
         container.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
       }
     }
-    setPendingScrollDate(null);
+    setTimeout(() => setPendingScrollDate(null), 0);
   }, [pendingScrollDate, expandedYear, groupedColumns, yearTimeline]);
 
   const eventsByMed = useMemo(() => {

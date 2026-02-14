@@ -46,7 +46,7 @@ export default function ImportPanel() {
       if (!res.ok) throw new Error(data.error ?? "Upload failed");
       setResponse(data);
       setStatus("done");
-    } catch (err) {
+    } catch {
       setResponse({ event_count: 0, med_count: 0, meds: [], preview: [] });
       setStatus("error");
     }

@@ -18,6 +18,7 @@ export async function GET() {
     volume_unit: string | null;
     alert_days_before_reorder: number | null;
     reorder_location: string | null;
+    amount_per_bottle: number | null;
   }>;
 
   try {
@@ -33,7 +34,8 @@ export async function GET() {
          mi.current_volume,
          mi.volume_unit,
          coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
-         mi.reorder_location
+         mi.reorder_location,
+         mi.amount_per_bottle
        from med m
        left join med_inventory mi on mi.med_id = m.id
        where m.user_id = $1
@@ -46,9 +48,11 @@ export async function GET() {
       typeof error === "object" && error !== null && "code" in error
         ? String((error as { code?: unknown }).code)
         : "";
-    const missingInventoryTable =
-      code === "42P01" || message.includes('relation "med_inventory" does not exist');
-    if (!missingInventoryTable) throw error;
+    const inventorySchemaMismatch =
+      code === "42P01" ||
+      (code === "42703" && message.includes('column "amount_per_bottle" does not exist')) ||
+      message.includes('relation "med_inventory" does not exist');
+    if (!inventorySchemaMismatch) throw error;
 
     meds = await dbQuery(
       `select
@@ -62,7 +66,8 @@ export async function GET() {
          null::numeric as current_volume,
          null::text as volume_unit,
          7 as alert_days_before_reorder,
-         null::text as reorder_location
+         null::text as reorder_location,
+         null::numeric as amount_per_bottle
        from med m
        where m.user_id = $1
        order by m.name`,

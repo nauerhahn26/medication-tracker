@@ -6,6 +6,7 @@ create table if not exists med_inventory (
   volume_unit text,
   alert_days_before_reorder integer not null default 7,
   reorder_location text,
+  amount_per_bottle numeric,
   updated_at timestamptz default now(),
   check (alert_days_before_reorder > 0)
 );

@@ -3,10 +3,8 @@ name: Auto Deploy
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - "**"
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -41,7 +39,7 @@ jobs:
           vercel-args: "--prod"
 
       - name: Deploy preview
-        if: github.event_name == 'pull_request'
+        if: github.ref != 'refs/heads/main'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}

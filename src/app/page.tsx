@@ -1,3 +1,4 @@
+import Link from "next/link";
 import ActiveTodayPanel from "@/components/ActiveTodayPanel";
 import AddMedForm from "@/components/AddMedForm";
 import ImportPanel from "@/components/ImportPanel";
@@ -12,18 +13,20 @@ export default function Home() {
             Medication Timeline Tracker
           </p>
           <div className="flex items-center gap-4 text-xs">
-            <a href="/timeline" className="font-semibold text-[var(--accent)]">
+            <Link href="/timeline" className="font-semibold text-[var(--accent)]">
               Timeline Explorer
-            </a>
-            <a href="/meds" className="font-semibold text-[var(--accent)]">
+            </Link>
+            <Link href="/meds" className="font-semibold text-[var(--accent)]">
               Meds
-            </a>
-            <a href="/ai-screen" className="font-semibold text-[var(--accent)]">
+            </Link>
+            <Link href="/ai-screen" className="font-semibold text-[var(--accent)]">
               AI Drug-to-Drug Analysis
-            </a>
-            <a href="/logout" className="font-semibold text-[var(--muted)]">
-              Sign out
-            </a>
+            </Link>
+            <form action="/logout" method="get">
+              <button type="submit" className="font-semibold text-[var(--muted)]">
+                Sign out
+              </button>
+            </form>
           </div>
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <div className="space-y-5">
@@ -35,13 +38,13 @@ export default function Home() {
                 Daily totals are the source of truth, with optional cadence fields
                 like BID or TID when you need them.
               </p>
-              <a
+              <Link
                 href="/ai-screen"
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
               >
                 <span>Run AI Drug-to-Drug Analysis</span>
                 <span aria-hidden="true">✦</span>
-              </a>
+              </Link>
             </div>
             <AddMedForm />
           </div>
