@@ -59,7 +59,13 @@ async function ensureInventorySchemaColumns() {
 }
 
 function isMissingInventoryColumn(error: { code: string; message: string }) {
-  return error.code === "42703" && error.message.includes('relation "med_inventory"');
+  return (
+    error.code === "42703" &&
+    (error.message.includes('relation "med_inventory"') ||
+      error.message.includes("amount_per_bottle") ||
+      error.message.includes("pills_per_bottle") ||
+      error.message.includes("amount_per_pill"))
+  );
 }
 
 function isConflictTargetMissing(error: { code: string; message: string }) {
@@ -109,7 +115,11 @@ async function getMed(userId: string, medId: string) {
         : "";
     const inventorySchemaMismatch =
       code === "42P01" ||
-      (code === "42703" && message.includes('relation "med_inventory"')) ||
+      (code === "42703" &&
+        (message.includes('relation "med_inventory"') ||
+          message.includes("amount_per_bottle") ||
+          message.includes("pills_per_bottle") ||
+          message.includes("amount_per_pill"))) ||
       message.includes('relation "med_inventory" does not exist');
     if (!inventorySchemaMismatch) throw error;
 
