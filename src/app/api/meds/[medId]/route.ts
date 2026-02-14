@@ -500,7 +500,7 @@ export async function PATCH(request: Request, { params }: Params) {
         first.code === "42P01" ||
         first.message.includes('relation "med_inventory" does not exist');
       const missingInventoryUserId =
-        first.code === "42703" ||
+        first.code === "42703" &&
         first.message.includes('column "user_id" of relation "med_inventory" does not exist');
 
       if (missingInventoryTable) {
