@@ -41,6 +41,23 @@ function parsePgError(error: unknown) {
   return { code, message };
 }
 
+async function ensureInventorySchemaColumns() {
+  await dbQuery(`alter table med_inventory add column if not exists user_id uuid`);
+  await dbQuery(
+    `alter table med_inventory add column if not exists track_inventory boolean not null default false`,
+  );
+  await dbQuery(`alter table med_inventory add column if not exists current_volume numeric`);
+  await dbQuery(`alter table med_inventory add column if not exists volume_unit text`);
+  await dbQuery(
+    `alter table med_inventory add column if not exists alert_days_before_reorder integer not null default 10`,
+  );
+  await dbQuery(`alter table med_inventory add column if not exists reorder_location text`);
+  await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
+  await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
+  await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
+  await dbQuery(`alter table med_inventory add column if not exists updated_at timestamptz default now()`);
+}
+
 async function getMed(userId: string, medId: string) {
   let rows: MedRecord[];
   try {
@@ -360,19 +377,13 @@ export async function PATCH(request: Request, { params }: Params) {
         );
         await upsertWithUserId();
       } else if (missingInventoryUserId) {
-        await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
-        await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
-        await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
+        await ensureInventorySchemaColumns();
         await upsertWithoutUserId();
       } else if (
         first.code === "42703" &&
-        (first.message.includes("amount_per_bottle") ||
-          first.message.includes("pills_per_bottle") ||
-          first.message.includes("amount_per_pill"))
+        first.message.includes('relation "med_inventory"')
       ) {
-        await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
-        await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
-        await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
+        await ensureInventorySchemaColumns();
         await upsertWithUserId();
       } else {
         throw error;
