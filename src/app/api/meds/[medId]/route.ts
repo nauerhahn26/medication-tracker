@@ -41,23 +41,6 @@ function parsePgError(error: unknown) {
   return { code, message };
 }
 
-async function ensureInventorySchemaColumns() {
-  await dbQuery(`alter table med_inventory add column if not exists user_id uuid`);
-  await dbQuery(
-    `alter table med_inventory add column if not exists track_inventory boolean not null default false`,
-  );
-  await dbQuery(`alter table med_inventory add column if not exists current_volume numeric`);
-  await dbQuery(`alter table med_inventory add column if not exists volume_unit text`);
-  await dbQuery(
-    `alter table med_inventory add column if not exists alert_days_before_reorder integer not null default 10`,
-  );
-  await dbQuery(`alter table med_inventory add column if not exists reorder_location text`);
-  await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
-  await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
-  await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
-  await dbQuery(`alter table med_inventory add column if not exists updated_at timestamptz default now()`);
-}
-
 function isMissingInventoryColumn(error: { code: string; message: string }) {
   return (
     error.code === "42703" &&
@@ -365,6 +348,63 @@ export async function PATCH(request: Request, { params }: Params) {
         ],
       );
 
+    const upsertCoreWithUserId = () =>
+      dbQuery(
+        `insert into med_inventory (
+           med_id,
+           user_id,
+           track_inventory,
+           current_volume,
+           volume_unit,
+           alert_days_before_reorder,
+           reorder_location
+         ) values ($1, $2, $3, $4, $5, $6, $7)
+         on conflict (med_id) do update set
+           user_id = excluded.user_id,
+           track_inventory = excluded.track_inventory,
+           current_volume = excluded.current_volume,
+           volume_unit = excluded.volume_unit,
+           alert_days_before_reorder = excluded.alert_days_before_reorder,
+           reorder_location = excluded.reorder_location,
+           updated_at = now()`,
+        [
+          medId,
+          user.id,
+          nextTrackInventory,
+          nextCurrentVolume,
+          nextVolumeUnit,
+          nextAlertDays,
+          nextReorderLocation,
+        ],
+      );
+
+    const upsertCoreWithoutUserId = () =>
+      dbQuery(
+        `insert into med_inventory (
+           med_id,
+           track_inventory,
+           current_volume,
+           volume_unit,
+           alert_days_before_reorder,
+           reorder_location
+         ) values ($1, $2, $3, $4, $5, $6)
+         on conflict (med_id) do update set
+           track_inventory = excluded.track_inventory,
+           current_volume = excluded.current_volume,
+           volume_unit = excluded.volume_unit,
+           alert_days_before_reorder = excluded.alert_days_before_reorder,
+           reorder_location = excluded.reorder_location,
+           updated_at = now()`,
+        [
+          medId,
+          nextTrackInventory,
+          nextCurrentVolume,
+          nextVolumeUnit,
+          nextAlertDays,
+          nextReorderLocation,
+        ],
+      );
+
     const manualUpsertWithUserId = () =>
       dbQuery(
         `with updated as (
@@ -482,11 +522,30 @@ export async function PATCH(request: Request, { params }: Params) {
         );
         await upsertWithUserId();
       } else if (missingInventoryUserId) {
-        await ensureInventorySchemaColumns();
-        await upsertWithoutUserId();
+        try {
+          await upsertWithoutUserId();
+        } catch (secondError) {
+          const second = parsePgError(secondError);
+          if (isMissingInventoryColumn(second)) {
+            await upsertCoreWithoutUserId();
+          } else {
+            throw secondError;
+          }
+        }
       } else if (isMissingInventoryColumn(first)) {
-        await ensureInventorySchemaColumns();
-        await upsertWithUserId();
+        try {
+          await upsertCoreWithUserId();
+        } catch (secondError) {
+          const second = parsePgError(secondError);
+          if (
+            second.code === "42703" &&
+            second.message.includes('column "user_id" of relation "med_inventory" does not exist')
+          ) {
+            await upsertCoreWithoutUserId();
+          } else {
+            throw secondError;
+          }
+        }
       } else if (isConflictTargetMissing(first)) {
         try {
           await manualUpsertWithUserId();
