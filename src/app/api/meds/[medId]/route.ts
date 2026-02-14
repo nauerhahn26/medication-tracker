@@ -27,6 +27,8 @@ type MedRecord = {
   volume_unit: string | null;
   alert_days_before_reorder: number | null;
   reorder_location: string | null;
+  pills_per_bottle: number | null;
+  amount_per_pill: number | null;
   amount_per_bottle: number | null;
 };
 
@@ -61,8 +63,10 @@ async function getMed(userId: string, medId: string) {
          coalesce(mi.track_inventory, false) as track_inventory,
          mi.current_volume,
          mi.volume_unit,
-         coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+         coalesce(mi.alert_days_before_reorder, 10) as alert_days_before_reorder,
          mi.reorder_location,
+         mi.pills_per_bottle,
+         mi.amount_per_pill,
          mi.amount_per_bottle
        from med m
        left join med_inventory mi on mi.med_id = m.id
@@ -77,7 +81,10 @@ async function getMed(userId: string, medId: string) {
         : "";
     const inventorySchemaMismatch =
       code === "42P01" ||
-      (code === "42703" && message.includes("amount_per_bottle")) ||
+      (code === "42703" &&
+        (message.includes("amount_per_bottle") ||
+          message.includes("pills_per_bottle") ||
+          message.includes("amount_per_pill"))) ||
       message.includes('relation "med_inventory" does not exist');
     if (!inventorySchemaMismatch) throw error;
 
@@ -100,8 +107,10 @@ async function getMed(userId: string, medId: string) {
          false as track_inventory,
          null::numeric as current_volume,
          null::text as volume_unit,
-         7 as alert_days_before_reorder,
+         10 as alert_days_before_reorder,
          null::text as reorder_location,
+         null::numeric as pills_per_bottle,
+         null::numeric as amount_per_pill,
          null::numeric as amount_per_bottle
        from med m
        where m.id = $1 and m.user_id = $2`,
@@ -150,6 +159,8 @@ export async function PATCH(request: Request, { params }: Params) {
     payload.volume_unit !== undefined ||
     payload.alert_days_before_reorder !== undefined ||
     payload.reorder_location !== undefined ||
+    payload.pills_per_bottle !== undefined ||
+    payload.amount_per_pill !== undefined ||
     payload.amount_per_bottle !== undefined;
 
   if (!hasAnyUpdate) {
@@ -212,6 +223,8 @@ export async function PATCH(request: Request, { params }: Params) {
     payload.volume_unit !== undefined ||
     payload.alert_days_before_reorder !== undefined ||
     payload.reorder_location !== undefined ||
+    payload.pills_per_bottle !== undefined ||
+    payload.amount_per_pill !== undefined ||
     payload.amount_per_bottle !== undefined
   ) {
     const nextTrackInventory =
@@ -224,7 +237,7 @@ export async function PATCH(request: Request, { params }: Params) {
       payload.volume_unit === undefined ? med.volume_unit : payload.volume_unit;
     const nextAlertDays =
       payload.alert_days_before_reorder === undefined
-        ? med.alert_days_before_reorder ?? 7
+        ? med.alert_days_before_reorder ?? 10
         : payload.alert_days_before_reorder;
     const nextReorderLocation =
       payload.reorder_location === undefined
@@ -234,6 +247,14 @@ export async function PATCH(request: Request, { params }: Params) {
       payload.amount_per_bottle === undefined
         ? med.amount_per_bottle
         : payload.amount_per_bottle;
+    const nextPillsPerBottle =
+      payload.pills_per_bottle === undefined
+        ? med.pills_per_bottle
+        : payload.pills_per_bottle;
+    const nextAmountPerPill =
+      payload.amount_per_pill === undefined
+        ? med.amount_per_pill
+        : payload.amount_per_pill;
     const upsertWithUserId = () =>
       dbQuery(
         `insert into med_inventory (
@@ -244,8 +265,10 @@ export async function PATCH(request: Request, { params }: Params) {
            volume_unit,
            alert_days_before_reorder,
            reorder_location,
+           pills_per_bottle,
+           amount_per_pill,
            amount_per_bottle
-         ) values ($1, $2, $3, $4, $5, $6, $7, $8)
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          on conflict (med_id) do update set
            user_id = excluded.user_id,
            track_inventory = excluded.track_inventory,
@@ -253,6 +276,8 @@ export async function PATCH(request: Request, { params }: Params) {
            volume_unit = excluded.volume_unit,
            alert_days_before_reorder = excluded.alert_days_before_reorder,
            reorder_location = excluded.reorder_location,
+           pills_per_bottle = excluded.pills_per_bottle,
+           amount_per_pill = excluded.amount_per_pill,
            amount_per_bottle = excluded.amount_per_bottle,
            updated_at = now()`,
         [
@@ -263,6 +288,8 @@ export async function PATCH(request: Request, { params }: Params) {
           nextVolumeUnit,
           nextAlertDays,
           nextReorderLocation,
+          nextPillsPerBottle,
+          nextAmountPerPill,
           nextAmountPerBottle,
         ],
       );
@@ -276,14 +303,18 @@ export async function PATCH(request: Request, { params }: Params) {
            volume_unit,
            alert_days_before_reorder,
            reorder_location,
+           pills_per_bottle,
+           amount_per_pill,
            amount_per_bottle
-         ) values ($1, $2, $3, $4, $5, $6, $7)
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          on conflict (med_id) do update set
            track_inventory = excluded.track_inventory,
            current_volume = excluded.current_volume,
            volume_unit = excluded.volume_unit,
            alert_days_before_reorder = excluded.alert_days_before_reorder,
            reorder_location = excluded.reorder_location,
+           pills_per_bottle = excluded.pills_per_bottle,
+           amount_per_pill = excluded.amount_per_pill,
            amount_per_bottle = excluded.amount_per_bottle,
            updated_at = now()`,
         [
@@ -293,6 +324,8 @@ export async function PATCH(request: Request, { params }: Params) {
           nextVolumeUnit,
           nextAlertDays,
           nextReorderLocation,
+          nextPillsPerBottle,
+          nextAmountPerPill,
           nextAmountPerBottle,
         ],
       );
@@ -316,8 +349,10 @@ export async function PATCH(request: Request, { params }: Params) {
              track_inventory boolean not null default false,
              current_volume numeric,
              volume_unit text,
-             alert_days_before_reorder integer not null default 7,
+             alert_days_before_reorder integer not null default 10,
              reorder_location text,
+             pills_per_bottle numeric,
+             amount_per_pill numeric,
              amount_per_bottle numeric,
              updated_at timestamptz default now(),
              check (alert_days_before_reorder > 0)
@@ -326,12 +361,18 @@ export async function PATCH(request: Request, { params }: Params) {
         await upsertWithUserId();
       } else if (missingInventoryUserId) {
         await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
+        await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
+        await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
         await upsertWithoutUserId();
       } else if (
         first.code === "42703" &&
-        first.message.includes('column "amount_per_bottle" of relation "med_inventory" does not exist')
+        (first.message.includes("amount_per_bottle") ||
+          first.message.includes("pills_per_bottle") ||
+          first.message.includes("amount_per_pill"))
       ) {
         await dbQuery(`alter table med_inventory add column if not exists amount_per_bottle numeric`);
+        await dbQuery(`alter table med_inventory add column if not exists pills_per_bottle numeric`);
+        await dbQuery(`alter table med_inventory add column if not exists amount_per_pill numeric`);
         await upsertWithUserId();
       } else {
         throw error;

@@ -27,6 +27,8 @@ type Med = {
   volume_unit: string | null;
   alert_days_before_reorder: number | null;
   reorder_location: string | null;
+  pills_per_bottle: number | null;
+  amount_per_pill: number | null;
   amount_per_bottle: number | null;
 };
 
@@ -125,6 +127,8 @@ export default function MedDetailPage() {
     track_inventory: boolean;
     current_volume: string;
     volume_unit: string;
+    pills_per_bottle: string;
+    amount_per_pill: string;
     amount_per_bottle: string;
     alert_days_before_reorder: string;
     reorder_location: string;
@@ -132,8 +136,10 @@ export default function MedDetailPage() {
     track_inventory: false,
     current_volume: "",
     volume_unit: "mg",
+    pills_per_bottle: "",
+    amount_per_pill: "",
     amount_per_bottle: "",
-    alert_days_before_reorder: "7",
+    alert_days_before_reorder: "10",
     reorder_location: "",
   });
   const [inventoryInputMode, setInventoryInputMode] = useState<
@@ -141,7 +147,7 @@ export default function MedDetailPage() {
   >("manual");
   const [pillCalcDraft, setPillCalcDraft] = useState({
     full_bottles: "",
-    loose_amount: "",
+    loose_pills: "",
   });
   const [liquidCalcDraft, setLiquidCalcDraft] = useState({
     full_bottles: "",
@@ -171,14 +177,18 @@ export default function MedDetailPage() {
       current_volume:
         nextMed.current_volume === null ? "" : String(nextMed.current_volume),
       volume_unit: nextMed.volume_unit ?? "mg",
+      pills_per_bottle:
+        nextMed.pills_per_bottle === null ? "" : String(nextMed.pills_per_bottle),
+      amount_per_pill:
+        nextMed.amount_per_pill === null ? "" : String(nextMed.amount_per_pill),
       amount_per_bottle:
         nextMed.amount_per_bottle === null ? "" : String(nextMed.amount_per_bottle),
-      alert_days_before_reorder: String(nextMed.alert_days_before_reorder ?? 7),
+      alert_days_before_reorder: String(nextMed.alert_days_before_reorder ?? 10),
       reorder_location: nextMed.reorder_location ?? "",
     });
     setPillCalcDraft({
       full_bottles: "",
-      loose_amount: "",
+      loose_pills: "",
     });
     setLiquidCalcDraft({
       full_bottles: "",
@@ -211,18 +221,20 @@ export default function MedDetailPage() {
 
     if (inventoryInputMode === "pill_pack") {
       const fullBottles = parseNonNegative(pillCalcDraft.full_bottles) ?? 0;
-      const amountPerBottle = parseNonNegative(inventoryDraft.amount_per_bottle);
-      const looseAmount = parseNonNegative(pillCalcDraft.loose_amount) ?? 0;
+      const pillsPerBottle = parseNonNegative(inventoryDraft.pills_per_bottle);
+      const amountPerPill = parseNonNegative(inventoryDraft.amount_per_pill);
+      const loosePills = parseNonNegative(pillCalcDraft.loose_pills) ?? 0;
 
-      if (amountPerBottle === null) {
+      if (pillsPerBottle === null || amountPerPill === null) {
         return {
           value: null,
-          error: "Enter how much one full bottle contains.",
+          error: "Enter pills per bottle and amount per pill.",
         };
       }
 
+      const totalPills = fullBottles * pillsPerBottle + loosePills;
       return {
-        value: Number((fullBottles * amountPerBottle + looseAmount).toFixed(2)),
+        value: Number((totalPills * amountPerPill).toFixed(2)),
         error: null,
       };
     }
@@ -238,7 +250,14 @@ export default function MedDetailPage() {
       value: Number((fullBottles * volumePerBottle + partialBottle).toFixed(2)),
       error: null,
     };
-  }, [inventoryDraft.amount_per_bottle, inventoryInputMode, liquidCalcDraft, pillCalcDraft]);
+  }, [
+    inventoryDraft.amount_per_bottle,
+    inventoryDraft.amount_per_pill,
+    inventoryDraft.pills_per_bottle,
+    inventoryInputMode,
+    liquidCalcDraft,
+    pillCalcDraft,
+  ]);
 
   async function refreshEvents() {
     if (!medId) return;
@@ -370,8 +389,12 @@ export default function MedDetailPage() {
     const alertDays = Number(inventoryDraft.alert_days_before_reorder);
     const stock = Number(inventoryDraft.current_volume);
     const amountPerBottle = Number(inventoryDraft.amount_per_bottle);
+    const pillsPerBottle = Number(inventoryDraft.pills_per_bottle);
+    const amountPerPill = Number(inventoryDraft.amount_per_pill);
     const hasStock = inventoryDraft.current_volume.trim() !== "";
     const hasAmountPerBottle = inventoryDraft.amount_per_bottle.trim() !== "";
+    const hasPillsPerBottle = inventoryDraft.pills_per_bottle.trim() !== "";
+    const hasAmountPerPill = inventoryDraft.amount_per_pill.trim() !== "";
 
     if (Number.isNaN(alertDays) || alertDays <= 0) {
       setInventorySavingStatus("error");
@@ -391,12 +414,41 @@ export default function MedDetailPage() {
       return;
     }
 
+    if (hasPillsPerBottle !== hasAmountPerPill) {
+      setInventorySavingStatus("error");
+      setError("Enter both pills per bottle and amount per pill.");
+      return;
+    }
+
+    if (hasPillsPerBottle && (Number.isNaN(pillsPerBottle) || pillsPerBottle < 0)) {
+      setInventorySavingStatus("error");
+      setError("Pills per bottle must be 0 or a positive number.");
+      return;
+    }
+
+    if (hasAmountPerPill && (Number.isNaN(amountPerPill) || amountPerPill < 0)) {
+      setInventorySavingStatus("error");
+      setError("Amount per pill must be 0 or a positive number.");
+      return;
+    }
+
+    const derivedAmountPerBottle =
+      hasPillsPerBottle && hasAmountPerPill ? pillsPerBottle * amountPerPill : null;
+    const finalAmountPerBottle =
+      derivedAmountPerBottle === null
+        ? hasAmountPerBottle
+          ? amountPerBottle
+          : null
+        : Number(derivedAmountPerBottle.toFixed(2));
+
     try {
       const payload = {
         track_inventory: inventoryDraft.track_inventory,
         current_volume: hasStock ? stock : null,
         volume_unit: inventoryDraft.volume_unit,
-        amount_per_bottle: hasAmountPerBottle ? amountPerBottle : null,
+        pills_per_bottle: hasPillsPerBottle ? pillsPerBottle : null,
+        amount_per_pill: hasAmountPerPill ? amountPerPill : null,
+        amount_per_bottle: finalAmountPerBottle,
         alert_days_before_reorder: alertDays,
         reorder_location: inventoryDraft.reorder_location.trim() || null,
       };
@@ -429,13 +481,20 @@ export default function MedDetailPage() {
     let nextVolume: number;
     if (reorderInputMode === "bottles") {
       const amountPerBottle = parseNonNegative(inventoryDraft.amount_per_bottle);
+      const pillsPerBottle = parseNonNegative(inventoryDraft.pills_per_bottle);
+      const amountPerPill = parseNonNegative(inventoryDraft.amount_per_pill);
+      const resolvedAmountPerBottle =
+        amountPerBottle ??
+        (pillsPerBottle !== null && amountPerPill !== null
+          ? pillsPerBottle * amountPerPill
+          : null);
       const fullBottles = parseNonNegative(reorderBottleDraft.full_bottles) ?? 0;
       const extraAmount = parseNonNegative(reorderBottleDraft.extra_amount) ?? 0;
-      if (amountPerBottle === null) {
-        setError("Set amount per bottle first, or switch to manual amount.");
+      if (resolvedAmountPerBottle === null) {
+        setError("Set bottle info first, or switch to manual amount.");
         return;
       }
-      nextVolume = Number((fullBottles * amountPerBottle + extraAmount).toFixed(2));
+      nextVolume = Number((fullBottles * resolvedAmountPerBottle + extraAmount).toFixed(2));
     } else {
       const parsedVolume = Number(reorderDraft.volume);
       if (Number.isNaN(parsedVolume) || parsedVolume < 0) {
@@ -453,7 +512,7 @@ export default function MedDetailPage() {
           track_inventory: true,
           current_volume: nextVolume,
           volume_unit: reorderDraft.unit,
-          alert_days_before_reorder: Number(inventoryDraft.alert_days_before_reorder || 7),
+          alert_days_before_reorder: Number(inventoryDraft.alert_days_before_reorder || 10),
           reorder_location: inventoryDraft.reorder_location || null,
         }),
       });
@@ -728,7 +787,7 @@ export default function MedDetailPage() {
                           : "border border-[var(--line)] text-[var(--ink)]"
                       }`}
                     >
-                      Bottles + loose
+                      Bottles + pills
                     </button>
                     <button
                       type="button"
@@ -743,10 +802,50 @@ export default function MedDetailPage() {
                     </button>
                   </div>
                   <p className="text-xs text-[var(--muted)]">
-                    Bottle modes use your saved “amount per bottle” so entering bottle counts is
-                    fast and unambiguous.
+                    Pill mode tracks bottle capacity and pill strength, so stock is always
+                    calculated from bottles + leftover pills.
                   </p>
-                  {inventoryInputMode !== "manual" && (
+                  {inventoryInputMode === "pill_pack" && (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <label className="grid gap-1 text-sm text-[var(--ink)]">
+                        <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Pills per bottle
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={inventoryDraft.pills_per_bottle}
+                          onChange={(event) =>
+                            setInventoryDraft({
+                              ...inventoryDraft,
+                              pills_per_bottle: event.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm text-[var(--ink)]">
+                        <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Amount per pill ({inventoryDraft.volume_unit})
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={inventoryDraft.amount_per_pill}
+                          onChange={(event) =>
+                            setInventoryDraft({
+                              ...inventoryDraft,
+                              amount_per_pill: event.target.value,
+                            })
+                          }
+                          className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
+                        />
+                      </label>
+                    </div>
+                  )}
+                  {inventoryInputMode === "liquid_pack" && (
                     <label className="grid gap-1 text-sm text-[var(--ink)]">
                       <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
                         Amount in one full bottle ({inventoryDraft.volume_unit})
@@ -791,17 +890,17 @@ export default function MedDetailPage() {
                       </label>
                       <label className="grid gap-1 text-sm text-[var(--ink)]">
                         <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-                          Loose amount ({inventoryDraft.volume_unit})
+                          Loose pills on hand
                         </span>
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
-                          value={pillCalcDraft.loose_amount}
+                          step="1"
+                          value={pillCalcDraft.loose_pills}
                           onChange={(event) =>
                             setPillCalcDraft({
                               ...pillCalcDraft,
-                              loose_amount: event.target.value,
+                              loose_pills: event.target.value,
                             })
                           }
                           className="rounded-xl border border-[var(--line)] bg-white px-3 py-2"
@@ -874,7 +973,9 @@ export default function MedDetailPage() {
                       </span>
                       {!inventoryCalculatedStock.error && (
                         <span className="text-xs text-[var(--muted)]">
-                          Formula: bottles × amount-per-bottle + partial/loose amount
+                          {inventoryInputMode === "pill_pack"
+                            ? "Formula: (bottles × pills-per-bottle + loose pills) × amount-per-pill"
+                            : "Formula: bottles × amount-per-bottle + partial amount"}
                         </span>
                       )}
                     </div>
@@ -1053,8 +1154,15 @@ export default function MedDetailPage() {
                             />
                           </label>
                           <div className="text-xs text-amber-900 md:col-span-2">
-                            Uses saved amount per bottle:{" "}
-                            {inventoryDraft.amount_per_bottle || "not set"}{" "}
+                            Uses amount per bottle:{" "}
+                            {inventoryDraft.amount_per_bottle ||
+                              (inventoryDraft.pills_per_bottle &&
+                              inventoryDraft.amount_per_pill
+                                ? Number(
+                                    Number(inventoryDraft.pills_per_bottle) *
+                                      Number(inventoryDraft.amount_per_pill),
+                                  ).toFixed(2)
+                                : "not set")}{" "}
                             {inventoryDraft.volume_unit}
                           </div>
                         </div>

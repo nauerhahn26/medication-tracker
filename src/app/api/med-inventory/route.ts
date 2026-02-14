@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     coalesce(mi.track_inventory, false) as track_inventory,
     mi.current_volume,
     mi.volume_unit,
-    coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+    coalesce(mi.alert_days_before_reorder, 10) as alert_days_before_reorder,
     mi.reorder_location,
     de.total_daily_amount,
     de.unit as dose_unit,
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
       false as track_inventory,
       null::numeric as current_volume,
       null::text as volume_unit,
-      7 as alert_days_before_reorder,
+      10 as alert_days_before_reorder,
       null::text as reorder_location,
       de.total_daily_amount,
       de.unit as dose_unit,
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
 
   const items: InventoryItem[] = rows.map((row) => {
     const trackInventory = row.track_inventory;
-    const threshold = toNumber(row.alert_days_before_reorder) ?? 7;
+    const threshold = toNumber(row.alert_days_before_reorder) ?? 10;
     const stock = toNumber(row.current_volume);
     const dailyAmount = toNumber(row.total_daily_amount);
     const stockUnit = normalize(row.volume_unit);

@@ -18,6 +18,8 @@ export async function GET() {
     volume_unit: string | null;
     alert_days_before_reorder: number | null;
     reorder_location: string | null;
+    pills_per_bottle: number | null;
+    amount_per_pill: number | null;
     amount_per_bottle: number | null;
   }>;
 
@@ -33,8 +35,10 @@ export async function GET() {
          coalesce(mi.track_inventory, false) as track_inventory,
          mi.current_volume,
          mi.volume_unit,
-         coalesce(mi.alert_days_before_reorder, 7) as alert_days_before_reorder,
+         coalesce(mi.alert_days_before_reorder, 10) as alert_days_before_reorder,
          mi.reorder_location,
+         mi.pills_per_bottle,
+         mi.amount_per_pill,
          mi.amount_per_bottle
        from med m
        left join med_inventory mi on mi.med_id = m.id
@@ -50,7 +54,10 @@ export async function GET() {
         : "";
     const inventorySchemaMismatch =
       code === "42P01" ||
-      (code === "42703" && message.includes("amount_per_bottle")) ||
+      (code === "42703" &&
+        (message.includes("amount_per_bottle") ||
+          message.includes("pills_per_bottle") ||
+          message.includes("amount_per_pill"))) ||
       message.includes('relation "med_inventory" does not exist');
     if (!inventorySchemaMismatch) throw error;
 
@@ -65,8 +72,10 @@ export async function GET() {
          false as track_inventory,
          null::numeric as current_volume,
          null::text as volume_unit,
-         7 as alert_days_before_reorder,
+         10 as alert_days_before_reorder,
          null::text as reorder_location,
+         null::numeric as pills_per_bottle,
+         null::numeric as amount_per_pill,
          null::numeric as amount_per_bottle
        from med m
        where m.user_id = $1
